@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+out/
+.cache/
+*.tsbuildinfo
+.remotion/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Workspace (per-job artifacts, can be huge)
+workspace/
+!workspace/.gitkeep
+
+# Generated media
+*.mp4
+*.mp3
+*.wav
+*.png
+!webapp/public/favicon.ico
+!orchestrator/app/providers/mock/*.png
+
+# Logs
+*.log
+logs/

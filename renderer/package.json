@@ -1,0 +1,26 @@
+{
+  "name": "videoai-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion-based renderer that consumes SceneDefinition JSON and produces a 16:9 MP4.",
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "tsc --noEmit",
+    "render": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0",
+    "@remotion/cli": "^4.0",
+    "@remotion/renderer": "^4.0",
+    "react": "^18.2",
+    "react-dom": "^18.2",
+    "remotion": "^4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11",
+    "@types/react": "^18.2",
+    "@types/react-dom": "^18.2",
+    "tsx": "^4.7",
+    "typescript": "^5.3"
+  }
+}

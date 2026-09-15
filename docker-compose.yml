@@ -1,0 +1,25 @@
+# Optional services for the orchestrator. The MVP runs without
+# these (SQLite for the DB, synchronous in-process job runner),
+# so docker compose is only needed when you scale up.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: videoai
+      POSTGRES_PASSWORD: videoai
+      POSTGRES_DB: videoai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
