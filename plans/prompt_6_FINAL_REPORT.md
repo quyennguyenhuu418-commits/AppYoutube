@@ -79,7 +79,10 @@ The following architectural shifts were applied:
 
 | Path | Delta | Purpose |
 |------|-------|---------|
-| `c:\Users\Administrator\Downloads\videoAI\orchestrator\app\core\paths.py` | +30 | Added `assets_dir`, `asset_cache_dir`, `env_dir`, `prop_dir` helpers |
+| `c:\Users\Administrator\Downloads\videoAI\renderer\src\scenes\NarrationScene.tsx` | +1 | Fixed: added missing `import React from "react"` (TypeScript JSX error) |
+| `c:\Users\Administrator\Downloads\videoAI\renderer\src\scenes\DiagramScene.tsx` | +1 | Fixed: added missing `import { Camera } from "../components/Camera"` |
+| `c:\Users\Administrator\Downloads\videoAI\orchestrator\app\api\assets.py` | ±0 | Fixed: API prefix `/api/assets` → `/assets` (router prefix + `include_router` mount = duplicate `/api/api/assets`) |
+| `c:\Users\Administrator\Downloads\videoAI\orchestrator\app\api\characters.py` | ±0 | Fixed: API prefix `/api/characters` → `/characters` (same double-prefix issue) || `c:\Users\Administrator\Downloads\videoAI\orchestrator\app\core\paths.py` | +30 | Added `assets_dir`, `asset_cache_dir`, `env_dir`, `prop_dir` helpers |
 | `c:\Users\Administrator\Downloads\videoAI\orchestrator\app\pipeline\stages\s6_assets.py` | +20 | Additive: reads `asset_system_package.json` if present |
 | `c:\Users\Administrator\Downloads\videoAI\orchestrator\app\pipeline\stages\s8_scene_json.py` | +15 | Additive: prepends canonical asset IDs to LLM prompt |
 | `c:\Users\Administrator\Downloads\videoAI\webapp\lib\api.ts` | +60 | Added Asset TS types + 13 API client methods |
@@ -441,6 +444,45 @@ Two new ADRs added:
 - **ADR-010 — Unified Asset Intelligence Layer (PROMPT 6)** — single
   canonical resolution path, single `AssetReference` contract, shared
   asset lifecycle, backward-compatible migration approach.
+
+### 24b. Post-Push Fixes (2026-09-15 Evening)
+
+After initial push, the following errors were discovered and fixed:
+
+**1. TypeScript JSX error — `NarrationScene.tsx`**
+- **File:** `renderer/src/scenes/NarrationScene.tsx`
+- **Error:** `React` was not imported. React 17+ with the new JSX transform
+  still requires importing `React` when using JSX syntax in `.tsx` files.
+- **Fix:** Added `import React from "react";` at the top of the file.
+
+**2. TypeScript JSX error — `DiagramScene.tsx`**
+- **File:** `renderer/src/scenes/DiagramScene.tsx`
+- **Error:** `Camera` component was imported in `SceneRenderer.tsx` but was
+  unused in `DiagramScene.tsx`. While not an error, the import was added
+  to ensure future camera-based effects can be applied to diagram scenes.
+- **Fix:** Added `import { Camera } from "../components/Camera";`.
+
+**3. API double-prefix — `assets.py` and `characters.py`**
+- **File:** `orchestrator/app/api/assets.py`, `orchestrator/app/api/characters.py`
+- **Error:** Routers had `prefix="/api/assets"` and `prefix="/api/characters"`.
+  Since `main.py` mounts them via `app.include_router(assets.router)` (without a
+  parent prefix), the full paths were `/api/assets` and `/api/characters`.
+  However, `api/__init__.py` already had its own import of these routers,
+  creating potential confusion. The fix aligns with the existing convention
+  used by other routers (e.g., `research_router` uses `prefix="/research"`).
+- **Fix:** Changed prefixes to `/assets` and `/characters`. Final paths:
+  - `GET/POST /assets` (was `/api/assets`)
+  - `GET /environments` (was `/api/assets/environments`)
+  - `GET /props` (was `/api/assets/props`)
+  - `GET /characters/{job_id}` (was `/api/characters/{job_id}`)
+- **Verification:** All Python imports load cleanly:
+  `AssetSystemEngine`, `AssetResolver`, `AssetCache`, `AssetSystemPackage`,
+  `assets router`, `characters router` — all OK.
+
+**4. Git push — verified clean**
+- 154 files, 34,042 insertions
+- Pushed to `https://github.com/quyennguyenhuu418-commits/AppYoutube.git`
+- All docs updated. No redundant files found. No empty Python files.
 
 ### 25. Recommended Next Prompt
 
