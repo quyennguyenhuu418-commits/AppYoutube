@@ -24,7 +24,7 @@ class ThesisStage(Stage):
     """
 
     name = "thesis"
-    label = "Thesis"
+    label = "Luận điểm"
 
     def run(self, ctx: StageContext) -> dict:
         story_out = stage_path(ctx.job_id, "story_package")

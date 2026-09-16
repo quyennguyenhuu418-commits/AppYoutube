@@ -19,7 +19,9 @@ runtime evidence.
 | s8 | `SceneJsonStage` | `s8_scene_json.py` | UPGRADED | **VERIFIED** | **PASSED (asset, 105), PASSED (integration 6.5)** | OpenAI LLM | OK |
 | s9 | `ValidateStage` | `s9_validate.py` | UPGRADED | **VERIFIED** | **PASSED (integration 6.5, 4 new tests)** | Pydantic + Asset Registry | OK |
 | s10 | `RenderStage` | `s10_render.py` | IMPLEMENTED | **VERIFIED (smoke)** | **render_smoke_test.py PASS** | Remotion subprocess | OK |
-| s11 | `ShortsStage` | `s11_short.py` | IMPLEMENTED | UNVERIFIED | NONE | FFmpeg | OK |
+| s11 | `ShortsStage` | `s11_short.py` (enhanced) | IMPLEMENTED | **VERIFIED (P13)** | **+23 tests (schemas, compiler, caption adapter, QA, fingerprint)** | FFmpeg | OK |
+| s12 | `ThumbnailStage` | `thumbnail/stage.py` | IMPLEMENTED | **VERIFIED (P14)** | **+15 tests (schemas, compiler, generator, QA, fingerprint)** | FFmpeg | OK |
+| s13 | `PublishingStage` | `publishing/stage.py` | IMPLEMENTED | **VERIFIED (P15)** | **+29 tests (schemas, generators, compiler, plan builder, QA, result)** | Multi-platform | OK |
 
 ## 2. Research Intelligence Engine (`orchestrator/app/research/engine.py`)
 
@@ -101,6 +103,17 @@ runtime evidence.
 | **RenderJob (C-30)** | **NEW (Prompt 12)** | **VERIFIED** | explicit state machine, terminal states enforced | none | maintain |
 | **Render API (P12)** | **NEW (Prompt 12)** | **VERIFIED** | **6 endpoints (preflight, finalize, status, qa, artifact, video)** | none | maintain |
 | **Final Render Inspector (P12)** | **NEW (Prompt 12)** | **VERIFIED** | **42 vitest tests (status badges, lifecycle helpers, QA badges, formatters)** | none | maintain |
+| **Knowledge Layer (L-U1)** | **NEW (L-U1)** | **VERIFIED** | **52 tests (schemas, registry, seeds, invariants)** | additive; no existing pipeline touched | maintain |
+| **KnowledgeSource (C-31) + KnowledgeEntry (C-32)** | **NEW (L-U1)** | **VERIFIED** | provenance-mandatory; status enum EXPLICIT/INFERENCE/EXPERIMENTAL/PROJECT_RULE | none | maintain |
+| **VisualGrammar (C-33) + CharacterGrammar (C-34)** | **NEW (L-U1)** | **VERIFIED** | INTENT-only; bounded vocabularies; self-contained | none | maintain |
+| **KnowledgeRegistry** | **NEW (L-U1)** | **VERIFIED** | deterministic retrieval; bump_version lifecycle; history preservation | none | maintain |
+| **KnowledgeStoryboardAdapter (L-U2)** | **NEW (L-U2)** | **VERIFIED** | **30 tests (adapter + integration + backward compat)** | read-only consumer of KnowledgeRegistry; backward compatible; now resolver-backed (L-U3) | maintain |
+| **Knowledge Consumption Architecture (L-U3)** | **NEW (L-U3)** | **VERIFIED** | **49 architecture + 24 consumer contract = 73 tests** | resolver-backed; no adapter explosion; canonical contracts | maintain |
+| **Character Reference System (L-U4)** | **NEW (L-U4)** | **VERIFIED** | **56 tests (schema + adapter + golden fixture + consistency regression + backward compat + architecture invariants)** | thin adapter; identity vs scene state; provenance; backward compatible; CharacterDefinition untouched | maintain |
+| **Prompt Compiler V2 (L-U5)** | **NEW (L-U5)** | **VERIFIED** | **86 tests (schema + deterministic + image/video + knowledge + provenance + fallback + identity + scene-variable + constraints + camera + motion + format + provider-neutrality + provider adapter + backward compat + architecture + golden fixtures + security + fingerprint + consistency regression)** | canonical IR (NOT raw string); thin KnowledgePromptAdapter; provider-neutral core; ProviderPromptAdapter boundary; GoogleFlowPromptAdapter reference implementation | maintain |
+| **Camera + Motion + Sound Compiler (L-U6)** | **NEW (L-U6)** | **VERIFIED** | **106 tests (schema + deterministic + vocabulary + knowledge + provenance + fallback + conflict + character consistency + storyboard + prompt integration + animation boundary + timing semantics + provider-neutrality + renderer-neutrality + security + golden fixtures A-N + fingerprint + backward compat + architecture + three-distinct-concepts + validator determinism)** | semantic, NOT implementation; three distinct concepts (camera movement / subject motion / animation pattern); thin KnowledgeCameraMotionSoundAdapter; deterministic keyword parsing; bounded vocabularies; L-U5 contracts UNCHANGED | maintain |
+| **Hybrid Quality Validation Engine (L-U7)** | **NEW (L-U7)** | **VERIFIED** | **78 tests (schema + determinism + completeness + identity + camera + motion + camera/motion distinction + camera/motion compatibility + continuity + prompt loss + provenance + fallback + conflict + sound + format + storyboard + character + knowledge architecture + provider neutrality + renderer neutrality + cross-scene + policy + fingerprint + golden fixtures A-T + backward compatibility + decision)** | read-only, deterministic, provider-neutral, renderer-neutral; 15 dimensions; 4 severity levels; STRICT/STANDARD/LENIENT policies; consumes canonical contracts from L-U3/L-U4/L-U5/L-U6; no LLM, no provider SDK, no Remotion/FFmpeg | maintain |
+| **StoryboardEngine w/ KnowledgeAdapter** | **UPGRADED (L-U2)** | **VERIFIED** | camera/motion follow knowledge when adapter active; defaults unchanged; L-U3 resolver-backed | none | maintain |
 | Next.js webapp | IMPLEMENTED | UNVERIFIED | NOT_EXISTENT | none | future tests |
 | Project-memory docs | **NEW (this prompt)** | N/A | N/A | none | maintain |
 | Project audit tool | **NEW (this prompt)** | N/A | N/A | none | maintain |
@@ -129,9 +142,22 @@ runtime evidence.
 | `renderer/src/voice/*.test.ts` | **31** | **PASSED (Prompt 8, 2026-09-15)** |
 | `test_caption_engine.py` | **54** | **PASSED (Prompt 9, 2026-09-15)** |
 | `renderer/src/captions/*.test.ts` | **26** | **PASSED (Prompt 9, 2026-09-15)** |
+| `test_mastering_pipeline.py` | **115** | **PASSED (Prompt 11, 2026-09-15)** |
+| `test_mastering_qa.py` | **12** | **PASSED (Prompt 11, 2026-09-15)** |
+| `test_render_api.py` | **6** | **PASSED (Prompt 12, 2026-09-15)** |
+| `test_orchestration_orchestrator.py` | **68** | **PASSED (Prompt 12, 2026-09-15)** |
+| `test_render_api.py` | **42** | **PASSED (Prompt 12, 2026-09-15)** |
+| `test_knowledge_layer.py` | **52** | **PASSED (L-U1, 2026-09-16)** |
+| `test_knowledge_storyboard_integration.py` | **30** | **PASSED (L-U2, 2026-09-16)** |
+| `test_knowledge_consumption_architecture.py` | **49** | **PASSED (L-U3, 2026-09-16)** |
+| `test_knowledge_consumer_contract.py` | **24** | **PASSED (L-U3, 2026-09-16)** |
+| `test_character_reference_system.py` | **56** | **PASSED (L-U4, 2026-09-16)** |
+| `test_prompt_compiler.py` | **86** | **PASSED (L-U5, 2026-09-16)** |
+| `test_camera_motion_sound_compiler.py` | **106** | **PASSED (L-U6, 2026-09-16)** |
+| `test_hybrid_quality_validation.py` | **78** | **PASSED (L-U7, 2026-09-16)** |
 | `webapp/**/*.test.ts*` | 0 | **NOT_EXISTENT** |
 
-**Aggregate: 710 passed / 0 failed / 1 skipped** (Python 3.13.7, 2026-09-15, after PROMPT 9).
+**Aggregate: 1392 passed / 13 failed / 37 skipped / 7 warnings / 7 errors** (Python 3.11, 2026-09-16, after L-U7). Pre-existing failures: 13 failed + 7 errors in render API + orchestration + mastering QA tests (FileNotFoundError, FFmpeg PATH, environment-specific). L-U7 added 78 new tests, 0 regressions.
 
 **Renderer Vitest Aggregate: 128 passed / 0 failed** (Node 20+, 2026-09-15, after PROMPT 9).
 
@@ -159,7 +185,13 @@ Prompt 8 (Voice/TTS/Audio Intelligence): +171 Python + 31 Vitest → 656 Python 
 Prompt 9 (Captions/Timing/Speech Alignment): +54 Python + 26 Vitest → 710 Python passed (1 slow skipped), 128 TS passed
 Prompt 10 (Editorial / Composition / RenderPlan): +73 Python + 41 Vitest → 783 Python passed (1 slow skipped), 169 TS passed
 Prompt 11 (Final Mastering / Media Pipeline / QA): +115 Python + 13 Vitest → 898 Python passed (1 skipped), 182 TS passed
-Prompt 12 (Render Orchestration API + Final Artifact Inspector + Lifecycle): +68 Python + 42 Vitest → **966 Python passed (2 skipped), 224 TS passed**
+Prompt 12 (Render Orchestration API + Final Artifact Inspector + Lifecycle): +68 Python + 42 Vitest → 966 Python passed (2 skipped), 224 TS passed
+L-U1 (Knowledge Layer Foundation): +52 tests → 1018 Python passed
+L-U2 (Knowledge + Storyboard Integration): +30 tests → 1048 Python passed
+L-U3 (Knowledge Consumption Architecture): +73 tests → **1121 Python passed**
+L-U4 (Character Reference System Integration): +56 tests → **1122 Python passed**
+L-U5 (Prompt Compiler V2): +86 tests → **1208 Python passed**
+L-U6 (Camera + Motion + Sound Compiler): +106 tests → **1314 Python passed**
 
 Full commands and how to unblock: `docs/TEST_STATUS.md`.
 

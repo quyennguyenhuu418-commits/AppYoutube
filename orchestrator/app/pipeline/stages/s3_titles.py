@@ -18,7 +18,7 @@ class TitlesStage(Stage):
     """
 
     name = "titles"
-    label = "Titles"
+    label = "Tiêu đề"
 
     def run(self, ctx: StageContext) -> dict:
         out = stage_path(ctx.job_id, "titles")

@@ -163,6 +163,30 @@ flowchart LR
     Character["character.CharacterSystemEngine"] --> SB["schemas.StoryboardPackage"]
     Character --> SD["schemas.SceneDefinition"]
     Character --> Cache["character.CharacterCache"]
+    CharRef["character.CharacterReferenceSpecification"] --> KCtx["knowledge.KnowledgeContext"]
+    CharRef --> KRes["knowledge.KnowledgeResolver"]
+    CharAdapter["character.KnowledgeCharacterAdapter"] --> CharRef
+    CharAdapter --> KCtx
+    CharAdapter --> KRes
+    CharAdapter --> SB
+    Prompt["prompt.PromptCompiler"] --> CharRef
+    Prompt --> KCtx
+    Prompt --> KRes
+    Prompt --> VG["knowledge.VisualGrammar"]
+    PromptAdapter["prompt.KnowledgePromptAdapter"] --> KCtx
+    PromptAdapter --> KRes
+    PromptAdapter --> Prompt
+    PromptVal["prompt.PromptValidator"] --> Prompt
+    CMS["prompt.CameraMotionSoundCompiler"] --> KCtx
+    CMS --> KRes
+    CMS --> CharRef
+    CMS --> Prompt
+    CMSAdapter["prompt.KnowledgeCameraMotionSoundAdapter"] --> KCtx
+    CMSAdapter --> KRes
+    CMSAdapter --> CMS
+    CMSVal["prompt.CameraMotionSoundValidator"] --> CMS
+    ProviderAdapter["prompt.ProviderPromptAdapter"] --> Prompt
+    ProviderAdapter -.-> "ADAPTED, NOT IMPORTED"| GoogleFlow["prompt.GoogleFlowPromptAdapter (reference)"]
     AssetSys["assets.AssetSystemEngine"] --> SB
     AssetSys --> CharPkg["schemas.CharacterSystemPackage"]
     AssetSys --> AssetRef["schemas.AssetReference"]

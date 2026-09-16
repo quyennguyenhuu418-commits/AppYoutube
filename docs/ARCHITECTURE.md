@@ -190,6 +190,98 @@ Two distinct cache layers:
 4. No automated contract tests between Python `SceneDefinition` and TS
    `SceneDefinition` mirror.
 
+## Character Reference System Architecture (L-U4)
+
+The Character System (PROMPT 5) is integrated with the Knowledge Layer
+(L-U1/L-U2/L-U3) via a **thin** `KnowledgeCharacterAdapter`. The adapter
+produces a canonical `CharacterReferenceSpecification` — a structured
+guidance contract — that the existing `CharacterSystemEngine` can consume.
+
+```
+CharacterRequirement (StoryboardPackage)
+        ↓
+KnowledgeCharacterAdapter (L-U4 — thin, read-only)
+        ↓
+KnowledgeContext + KnowledgeResolver (L-U3)
+        ↓
+CharacterReferenceSpecification (L-U4 — guidance, NOT values)
+        ↓
+CharacterSystemEngine (PROMPT 5 — unchanged)
+        ↓
+CharacterDefinition (PROMPT 5 — unchanged canonical identity)
+        ↓
+CharacterInstance (PROMPT 5 — scene placement)
+        ↓
+CharacterAsset / SVG (PROMPT 5 — unchanged)
+```
+
+**Key principle:** Identity ≠ Scene State.
+
+`CharacterReferenceSpecification` carries two disjoint frozensets:
+- `identity_properties` — locked unless explicitly overridden (head
+  shape, palette, proportions, etc.)
+- `scene_variables` — may change per scene without changing identity
+  (pose, expression, orientation, etc.)
+
+The L-U4 layer is provider-neutral. It produces no prompts, no image
+generation calls. Provider-specific syntax belongs to L-U5 (Prompt
+Compiler).
+
+---
+
+## Prompt Compiler V2 Architecture (L-U5)
+
+L-U5 introduces the canonical, deterministic, provider-neutral Prompt
+Compiler. It consumes structured intent (Knowledge + Character + Visual
+Grammar) and produces a structured `CanonicalPromptIR`. Provider-specific
+serialization is isolated in `ProviderPromptAdapter` subclasses.
+
+```
+PromptCompilationRequest
+        ↓
+PromptCompiler                    (canonical, provider-neutral)
+├── KnowledgePromptAdapter         (thin L-U5, consumes L-U3)
+├── CharacterReferenceSpecification (L-U4)
+├── VisualGrammar                   (L-U1)
+        ↓
+CanonicalPromptIR                  (structured, frozen Pydantic)
+        ↓
+PromptValidator                    (deterministic, no LLM)
+        ↓
+PromptCompilationResult            (with provenance, validation)
+        ↓
+CameraMotionSoundCompiler          (L-U6 — semantic camera/motion/sound enrichment)
+├── KnowledgeCameraMotionSoundAdapter (thin L-U6, consumes L-U3)
+├── Deterministic keyword parsing   (no LLM)
+└── Strict precedence: EXPLICIT > KNOWLEDGE > DEFAULT
+        ↓
+CameraMotionSoundCompilationResult (extended semantics, frozen Pydantic)
+        ↓
+QualityEngine                     (L-U7 — read-only quality gate)
+├── 15 dimension validators
+├── Hybrid: structural + semantic + cross-contract + provenance
+├── Deterministic, no LLM
+└── Provider-neutral / Renderer-neutral
+        ↓
+QualityValidationResult           (PASS / WARN / REJECT / UNAVAILABLE)
+        ↓
+ProviderPromptAdapter              (Google Flow, DINO, etc.) [FUTURE]
+        ↓
+ProviderPrompt                     (serialized string) [FUTURE]
+```
+
+**Key principles:**
+
+1. **Structured IR, NOT raw string.** The canonical compiler does NOT
+   concatenate prompt strings.
+2. **Provider syntax EXCLUDED from core.** The validator actively BLOCKS
+   provider syntax leaks.
+3. **Identity ≠ Scene State preserved.** The IR carries two disjoint
+   frozensets from `CharacterReferenceSpecification`.
+4. **Deterministic, no LLM.** Same inputs → same IR.
+5. **Backward compatible.** `PromptCompiler()` (no knowledge) works
+   exactly like before L-U5.
+
 ## Render Orchestration Architecture (PROMPT 12)
 
 ```

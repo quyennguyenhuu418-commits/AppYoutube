@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type JobSummary } from "@/lib/api";
 import Link from "next/link";
+import { vi } from "@/lib/i18n";
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "bg-slate-600",
@@ -23,10 +24,10 @@ export function JobsList() {
     return <div className="text-red-400">{error}</div>;
   }
   if (!jobs) {
-    return <div className="text-slate-400">Loading...</div>;
+    return <div className="text-slate-400">{vi.loading}</div>;
   }
   if (jobs.length === 0) {
-    return <div className="text-slate-400">No jobs yet. Start one from the home page.</div>;
+    return <div className="text-slate-400">{vi.noJobs}</div>;
   }
 
   return (
@@ -37,7 +38,7 @@ export function JobsList() {
             <span className={`w-2 h-2 rounded-full ${STATUS_COLOR[j.status] ?? "bg-slate-500"}`} />
             <span className="flex-1 truncate">{j.title || j.topic}</span>
             <span className="text-xs text-slate-500">
-              {new Date(j.created_at).toLocaleString()}
+              {new Date(j.created_at).toLocaleString("vi-VN")}
             </span>
           </Link>
         </li>

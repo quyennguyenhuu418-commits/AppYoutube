@@ -132,6 +132,33 @@ export default function FinalRenderInspectorPage() {
         </span>
       </header>
 
+      {/* Shortcut links to Shorts and Thumbnails */}
+      {isApproved && (
+        <div className="flex gap-3">
+          <Link
+            href={`/jobs/${id}/shorts`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900/40 hover:bg-blue-900/60 border border-blue-700 rounded-lg text-sm font-medium text-blue-200 transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="3" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M6 7l2.5 1.5L6 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            View Shorts (9:16)
+          </Link>
+          <Link
+            href={`/jobs/${id}/thumbnails`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-900/40 hover:bg-purple-900/60 border border-purple-700 rounded-lg text-sm font-medium text-purple-200 transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1.5" y="2.5" width="13" height="11" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+              <circle cx="5.5" cy="6" r="1" fill="currentColor"/>
+              <path d="M1.5 11l3.5-3 2 2 3-3 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            View Thumbnails
+          </Link>
+        </div>
+      )}
+
       <section>
         <h2 className="text-sm uppercase tracking-wider text-slate-400 mb-3">Topic</h2>
         <p className="text-xl">{status.topic}</p>

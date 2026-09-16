@@ -16,6 +16,8 @@ from app.api.research import router as research_router
 from app.api.story import router as story_router
 from app.api.storyboard import router as storyboard_router
 from app.api.render import router as render_router
+from app.api.shorts_thumbnails import router as shorts_thumbnails_router
+from app.api.publishing import router as publishing_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 
@@ -55,6 +57,8 @@ app.include_router(story_router)
 app.include_router(storyboard_router)
 app.include_router(characters.router)
 app.include_router(render_router)
+app.include_router(shorts_thumbnails_router)
+app.include_router(publishing_router)
 
 
 @app.get("/health")
@@ -64,6 +68,9 @@ def health() -> dict:
     return {
         "status": "ok",
         "openai_configured": settings.has_openai,
+        "groq_configured": settings.has_groq,
+        "cursor_configured": settings.has_cursor,
         "elevenlabs_configured": settings.has_elevenlabs,
         "cache_mode": settings.cache_mode,
+        "groq_model": settings.groq_llm_model,
     }

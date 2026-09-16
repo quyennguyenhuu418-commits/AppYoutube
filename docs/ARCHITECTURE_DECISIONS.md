@@ -306,3 +306,512 @@ These will be written when the corresponding systems are implemented.
 - `app/core/paths.py` (MODIFIED — added asset path helpers)
 - `webapp/app/jobs/[id]/assets/page.tsx` (NEW — minimal UI)
 - `webapp/lib/api.ts` (MODIFIED — Asset TypeScript types)
+
+---
+
+## ADR-011 — Knowledge Consumption Architecture (L-U3)
+
+**Problem:** L-U2 created one adapter (`KnowledgeStoryboardAdapter`) to integrate the L-U1 Knowledge Registry with the Storyboard Engine. If this pattern were repeated for every future consumer (Character, Asset, Prompt, Animation, Editorial, QA), it would produce:
+
+- Adapter explosion (6+ adapters)
+- Duplicated knowledge-access logic in each adapter
+- Fragmented fallback/error/version semantics
+- No canonical answer to "how should a new subsystem consume knowledge?"
+
+**Decision:** A canonical consumption architecture built on four composable concepts:
+
+```
+KnowledgeRegistry (L-U1 — data layer)
+        |
+        v
+KnowledgeResolver     ← single, composable, read-only, domain-agnostic
+        |
+        v
+KnowledgeContext      ← lifecycle + fallback policy + source provenance
+        |
+        v
+Domain adapter        ← thin translation (e.g. KnowledgeStoryboardAdapter)
+        |
+        v
+Production engine
+```
+
+**Canonical contracts:**
+
+| Contract | Role |
+|---|---|
+| `KnowledgeQuery` (frozen) | Immutable query: domain, ID, tags, applicability, status, version_pin |
+| `KnowledgeResult` (frozen) | Immutable view: id, domain, rules, examples, tags, version, provenance |
+| `KnowledgeProvenance` (frozen) | Compact provenance: source_id, source_type, source_reference, source_version, confidence |
+| `KnowledgeResolver` | Single read-only resolution path over the registry |
+| `KnowledgeContext` (frozen) | Lifecycle bundle: resolver + FallbackPolicy + sources + name |
+| `FallbackPolicy` | ENGINE_DEFAULT / WARN / REJECT / SILENT |
+| `KnowledgeError` hierarchy | Minimal error model (4 types) |
+
+**Why not one adapter per subsystem (Option A)?**
+Adapters would duplicate registry access, fallback, version, provenance, and filtering logic. Every new consumer would require copy-paste or inheritance from a base class — the "god object" problem moved to a base class.
+
+**Why not a KnowledgeManager god object (Option B)?**
+A manager with 100 methods collapses two responsibilities: "where is knowledge stored?" (resolver) and "what does my subsystem need?" (consumer adapter). This prevents composability and makes the core resolver aware of every future subsystem.
+
+**Why dependency injection, not a service locator (L-U3 §20-21)?**
+A service locator (e.g. `get_current_knowledge()`) hides the dependency from the type system and makes testing harder. Explicit injection (resolver passed to constructor) is visible, testable, and deterministic.
+
+**Why is the Knowledge Layer read-only for consumers?**
+The registry is a governed production-knowledge store. Production subsystems consume knowledge; they do not author it. Knowledge authoring (registration, version bumping) is a separate lifecycle event, not a production-runtime operation.
+
+**Why is provenance preserved?**
+Every production decision traceable back to its source is auditable. "Why did this camera choice get made?" → `[dino.camera.shot_types@1.0.0 via reference_document:src_dino_ai_v1]`.
+
+**Why is fallback controlled per-subsystem?**
+Different subsystems have different risk tolerances. Storyboard can use engine defaults safely; QA validation might require REJECT. The policy lives in the context, not the resolver.
+
+**Why is vector search deferred?**
+The current knowledge corpus is small (< 100 entries). Tag-based and domain-based filtering is sufficient. Vector search adds infrastructure complexity (embedding model, index, query latency) that is not yet justified.
+
+**Why are provider APIs excluded?**
+Knowledge is "what principle applies?". Execution is "how do I call the provider?". These are separate concerns. Prompt compilation (how to translate rules into a provider-specific prompt) belongs in a Prompt Compiler, not in the Knowledge Layer.
+
+**L-U2 migration:**
+`KnowledgeStoryboardAdapter` was refactored to use `KnowledgeResolver` internally while preserving its public API unchanged. It accepts either a `KnowledgeContext` (canonical L-U3) or a `KnowledgeRegistry` (legacy L-U2) for backward compatibility. All 30 L-U2 tests pass without modification.
+
+**Consequences:**
+
+- New consumers (L-U4 Character, L-U5 Prompt, L-U6 Animation, ...) follow the same pattern: obtain context → inject → query via resolver → translate results.
+- The Knowledge Layer does not import any production engine.
+- There is no global mutable registry.
+- There is no service locator.
+- Resolution is deterministic.
+- Provenance is mandatory on every result.
+- Version pinning is explicit.
+- Fallback is per-subsystem.
+
+**Evidence:**
+
+- `app/knowledge/query.py` — KnowledgeQuery (frozen query contract)
+- `app/knowledge/result.py` — KnowledgeResult + KnowledgeProvenance (frozen result contracts)
+- `app/knowledge/resolver.py` — KnowledgeResolver (canonical read path)
+- `app/knowledge/context.py` — KnowledgeContext + FallbackPolicy (lifecycle bundle)
+- `app/knowledge/errors.py` — KnowledgeError hierarchy (minimal error model)
+- `app/knowledge/storyboard_adapter.py` (refactored — resolver-backed, API unchanged)
+- `tests/test_knowledge_consumption_architecture.py` — 49 architecture tests
+- `tests/test_knowledge_consumer_contract.py` — 24 consumer contract tests
+- `docs/KNOWLEDGE_CONSUMPTION.md` — canonical consumption documentation
+
+---
+
+## ADR-012 — Character Reference System + Knowledge Integration (L-U4)
+
+**Problem:** The Character System (PROMPT 5) has a canonical architecture:
+`CharacterDefinition` (identity), `CharacterInstance` (scene placement),
+`CharacterRegistry`, `CharacterSystemEngine`, and `CharacterCache`.
+However, character creation was not governed by the Knowledge Layer
+(L-U1/L-U2/L-U3). There was no structured way to:
+- express "preserve identity", "maintain proportions", "keep wardrobe stable"
+  as production rules derived from governed knowledge
+- separate identity-bearing properties from scene-variable properties
+- ensure provenance for every knowledge-driven character decision
+- handle conflicts between scene requests and character identity rules
+- allow explicit overrides without silent redesigns
+
+**Decision:** Introduce a **thin** `KnowledgeCharacterAdapter` that produces
+a canonical `CharacterReferenceSpecification` (frozen Pydantic model). The
+spec is **guidance, not values** — it does NOT replace `CharacterDefinition`.
+
+**Architecture:**
+```
+KnowledgeContext (L-U3)
+        ↓
+KnowledgeResolver (L-U3)
+        ↓
+KnowledgeCharacterAdapter (L-U4 — thin)
+        ↓
+CharacterReferenceSpecification (L-U4)
+        ↓
+CharacterSystemEngine (PROMPT 5 — unchanged)
+        ↓
+CharacterDefinition
+```
+
+**Key choices:**
+
+1. **Identity vs Scene State separation**: `CharacterReferenceSpecification`
+   contains two disjoint frozensets — `identity_properties` (locked unless
+   explicitly overridden) and `scene_variables` (may vary per scene).
+   The two sets MUST NOT overlap.
+
+2. **GUIDANCE, NOT VALUES**: The spec carries rules and provenance, not
+   actual color values, head shapes, or other design choices. Those live
+   in `CharacterDefinition`.
+
+3. **THIN ADAPTER**: The adapter is read-only and only uses the canonical
+   `KnowledgeResolver` from L-U3. It does NOT manipulate registry internals.
+
+4. **PROVENANCE**: Every resolved rule, palette hint, wardrobe rule, and
+   negative constraint carries `KnowledgeProvenance` from L-U3.
+
+5. **EXPLICIT OVERRIDES**: `ExplicitOverride` is a structured record that
+   requires `justification`. No silent overrides.
+
+6. **REPRESENTED CONFLICTS**: `CharacterKnowledgeConflict` is a structured
+   record with `severity` and `property_name`. Conflicts are NOT silently
+   resolved.
+
+7. **NEGATIVE CONSTRAINTS**: `NegativeConstraint` represents "do NOT alter X"
+   rules. Provider-specific prompt syntax is NOT allowed at this layer.
+
+8. **PROVIDER NEUTRALITY**: L-U4 produces no prompts, no provider-specific
+   syntax. It stops before L-U5 (Prompt Compiler).
+
+**Rejected alternatives:**
+
+- **Replace CharacterDefinition with knowledge-derived values**: Rejected
+  because `CharacterDefinition` is the canonical character identity. Knowledge
+  guides creation; it doesn't replace identity.
+
+- **Inline knowledge rules in CharacterSystemEngine**: Rejected because it
+  would create a circular dependency (engine ← knowledge; engine → knowledge).
+
+- **Embed KnowledgeEntry directly into CharacterDefinition**: Rejected
+  because that would mutate the canonical character schema.
+
+- **Generate images as part of character reference**: Rejected because
+  L-U4 is a guidance contract, not an asset generation pipeline.
+
+**Why CharacterDefinition remains canonical:** Because it is the
+**identity** layer. The actual character (color, head shape, etc.) lives
+there. Knowledge is rules; characters are values.
+
+**Why Character Knowledge does not store actual character identity:**
+Because that would conflate guidance with identity. Knowledge tells us
+"preserve head shape"; `CharacterDefinition` stores the actual chosen
+head shape.
+
+**Why identity and scene state are separated:** Because conflating them
+leads to silent character redesigns. A pose change is NOT an identity
+change. A wardrobe change IS.
+
+**Why KnowledgeContext is injected:** Because that follows the canonical
+L-U3 pattern (no global singletons, no service locators).
+
+**Why provider-specific prompt syntax is excluded:** Because L-U4 is
+provider-neutral. Prompt syntax belongs in L-U5 (Prompt Compiler).
+
+**Why Character versioning is independent from Knowledge versioning:**
+Because mutating existing characters when knowledge changes would
+break reproducibility. A new knowledge version affects only new
+character resolutions.
+
+**Why explicit overrides are necessary:** Because silent overrides
+undermine identity. If a scene really needs a wardrobe change,
+it must be explicit (with justification), not silent.
+
+**Why existing Character contracts are reused instead of duplicated:**
+Because the existing Character System already handles identity, instance,
+registry, and lifecycle correctly. L-U4 adds GUIDANCE, not a new identity
+layer.
+
+**Files created:**
+- `orchestrator/app/character/reference_schema.py` — canonical schema
+- `orchestrator/app/character/knowledge_adapter.py` — thin adapter
+- `orchestrator/tests/test_character_reference_system.py` — 56 tests
+- `docs/CHARACTER_REFERENCE_SYSTEM.md` — full documentation
+
+**Files modified:** none (Character System components untouched).
+
+---
+
+## ADR-013 — Knowledge-Driven Narration Generation (s7) (Future)
+
+Placeholder. To be authored when s7 narration is refactored to consume
+`KnowledgeContext` directly.
+
+---
+
+## ADR-014 — Prompt Compiler V2 + Provider-Neutral IR (L-U5)
+
+**Problem:** Before L-U5, there was no canonical, deterministic,
+provider-neutral way to compile production intent into a structured
+prompt. The Knowledge Layer (L-U1), StoryboardEngine (L-U2), and
+CharacterReferenceSpecification (L-U4) all had canonical structured
+contracts, but prompt generation was either provider-specific (e.g.,
+Google Flow syntax) or LLM-mediated (e.g., calling a model to write a
+prompt).
+
+This created several architectural risks:
+
+1. **No canonical intermediate representation.** Different subsystems
+   might produce different prompt strings for the same intent.
+2. **No traceable provenance.** A prompt could not be traced back to
+   the KnowledgeEntry that informed it.
+3. **No identity preservation guarantees.** Character identity could
+   be silently redesigned by the prompt generation step.
+4. **Provider lock-in.** Every change to provider syntax required
+   rewriting the prompt generator.
+5. **No deterministic validation.** LLM-mediated prompt quality is
+   non-deterministic.
+
+**Decision:** Introduce a canonical `PromptCompiler` that produces a
+structured `CanonicalPromptIR` (NOT a raw prompt string). Provider-
+specific serialization lives in `ProviderPromptAdapter` subclasses.
+
+**Architecture:**
+```
+PromptCompilationRequest
+        ↓
+PromptCompiler                    (canonical, provider-neutral)
+├── KnowledgePromptAdapter         (thin L-U5, consumes L-U3)
+├── CharacterReferenceSpecification (L-U4)
+├── VisualGrammar                   (L-U1)
+        ↓
+CanonicalPromptIR                  (structured, frozen Pydantic)
+        ↓
+PromptValidator                    (deterministic, no LLM)
+        ↓
+PromptCompilationResult            (with provenance, validation)
+        ↓
+ProviderPromptAdapter              (Google Flow, DINO, etc.)
+        ↓
+ProviderPrompt                     (serialized string)
+```
+
+**Key choices:**
+
+1. **Structured IR, NOT raw string.** The canonical `CanonicalPromptIR`
+   is a frozen Pydantic model with typed fields. No string concatenation
+   in the core compiler.
+
+2. **Provider syntax EXCLUDED from core.** The canonical compiler does
+   NOT contain `--ar`, `--style`, `--seed`, or any provider-specific
+   flags. The validator actively BLOCKS such syntax if it leaks into
+   the IR.
+
+3. **IMAGE vs VIDEO explicitly distinguished.** `PromptKind.IMAGE` and
+   `PromptKind.VIDEO` are different enums. Motion is VIDEO-only. The
+   validator warns if motion is declared on IMAGE.
+
+4. **Negative constraints are first-class.** `NegativeConstraintItem`
+   is a structured record with `property_name`, `constraint_text`,
+   `is_identity_bearing`, `provenance`. NOT a string appended to the
+   end of a prompt.
+
+5. **Identity ≠ Scene State preservation.** `IdentityPreservationBlock`
+   carries `locked_properties` from `CharacterReferenceSpecification`.
+   `SceneElementsBlock` carries `permitted_variations`. These two
+   frozensets MUST remain disjoint.
+
+6. **Bounded vocabulary.** Camera shots, movements, motion patterns,
+   and visual styles use canonical enums from L-U1 VisualGrammar.
+   Adding vocabulary requires a `KnowledgeEntry` promotion.
+
+7. **Provenance preserved.** Every knowledge-derived element carries
+   `KnowledgeProvenance` from L-U3. The IR aggregates them.
+
+8. **Deterministic, no LLM.** Same inputs → same IR. No timestamps in
+   the IR (only in the result's `compiled_at`). No random IDs.
+   Request IDs derived from SHA-256.
+
+9. **Backward compatible.** `PromptCompiler()` (no knowledge) works
+   exactly like before L-U5. Existing `CharacterSystemEngine`,
+   `CharacterDefinition`, `CharacterReferenceSpecification`,
+   `VisualGrammar`, `CharacterGrammar`, `KnowledgeResolver`,
+   `KnowledgeContext` are untouched.
+
+**Rejected alternatives:**
+
+- **String-based prompt generation in core**: Rejected because it
+  would embed provider syntax in the core compiler.
+- **LLM-mediated prompt writing**: Rejected because it is
+  non-deterministic and not traceable.
+- **One provider adapter per subsystem**: Rejected because it would
+  duplicate prompt construction logic across subsystems.
+
+**Why structured IR over raw string:**
+Because raw strings are:
+- Provider-locked
+- Hard to validate
+- Hard to diff
+- Hard to trace
+- Hard to test structurally
+
+A structured IR can be validated deterministically, serialized to
+many providers, and tested structurally.
+
+**Why provider-neutrality in core:**
+Because provider SDKs change. Provider syntax is volatile. The
+canonical IR is stable.
+
+**Why image vs video explicitly distinguished:**
+Because motion is a VIDEO concept. Mixing them produces
+incorrect prompts (e.g., "still image with motion" is contradictory).
+The validator catches this.
+
+**Why provenance is mandatory:**
+Because every prompt decision must be traceable back to the
+KnowledgeEntry that informed it. The production knowledge is the
+ground truth for style, camera, motion, and constraints.
+
+**Why backward compatibility is mandatory:**
+Because L-U1 through L-U4 are all verified and in production. L-U5
+must be additive — never a breaking change.
+
+**Files created:**
+- `orchestrator/app/prompt/schemas.py` — canonical contracts
+- `orchestrator/app/prompt/adapters.py` — KnowledgePromptAdapter
+- `orchestrator/app/prompt/compiler.py` — PromptCompiler core
+- `orchestrator/app/prompt/validator.py` — PromptValidator
+- `orchestrator/app/prompt/provider_adapter.py` — ProviderPromptAdapter boundary
+- `orchestrator/app/prompt/__init__.py` — exports
+- `orchestrator/tests/test_prompt_compiler.py` — 86 tests
+- `docs/PROMPT_COMPILER_V2.md` — full documentation
+
+**Files modified:** none (existing contracts untouched).
+
+---
+
+## ADR-015 — Camera + Motion + Sound Compiler (L-U6)
+
+### Status
+Accepted — 2026-09-16.
+
+### Context
+After L-U5 (Prompt Compiler V2) was delivered, the project needed a
+semantic subsystem for camera, motion, and sound. This subsystem must
+be:
+- **Semantic, NOT implementation** — describes WHAT should happen,
+  not HOW the renderer executes it.
+- **Three distinct concepts** — camera movement, subject motion,
+  animation pattern are separate fields.
+- **Provider-neutral** — no `--ar`, `--style`, `--camera`, no Remotion,
+  no FFmpeg.
+- **Deterministic** — same inputs → same output.
+- **Backward compatible** — L-U5 contracts unchanged.
+
+### Decision
+Adopt a layered semantic compiler (`CameraMotionSoundCompiler`) that
+runs **after** `PromptCompiler` and produces a separate frozen result
+(`CameraMotionSoundCompilationResult`).
+
+### Architecture
+
+```
+PromptCompilationRequest
+        ↓
+PromptCompiler (L-U5)
+        ↓
+CanonicalPromptIR (L-U5 — UNCHANGED)
+        ↓
+CameraMotionSoundCompiler (L-U6 — NEW)
+├── KnowledgeCameraMotionSoundAdapter (thin L-U3 consumer)
+├── Deterministic keyword parsing (no LLM)
+└── Strict precedence: EXPLICIT > KNOWLEDGE > DEFAULT
+        ↓
+CameraMotionSoundCompilationResult (L-U6 — NEW, frozen)
+        ↓
+Animation / Editorial / Prompt downstream consumers
+```
+
+### Three Distinct Concepts
+
+| Concept | What | Example | Field |
+|---|---|---|---|
+| Camera Movement | Camera action | PUSH_IN, PAN | `CameraBlockExt.movement` |
+| Subject Motion | Character/object action | WALK, GESTURE | `SubjectMotionSpec.action` |
+| Animation Pattern | How motion is rendered | RIG_POSE_INTERPOLATION | `MotionBlockExt.pattern` |
+
+A character walking may have: Camera PUSH_IN, Subject motion WALK,
+Animation pattern RIG_POSE_INTERPOLATION. These are SEPARATE fields
+that downstream consumers interpret independently.
+
+### Sound vs Audio vs Mix
+
+| Concept | What | Example | Belongs to |
+|---|---|---|---|
+| Sound Intent | WHAT should be heard | "rice field ambience" | L-U6 `SoundLayerSpec` |
+| Audio File | Actual WAV/MP3 | narration_001.wav | P8 `app.voice.AudioArtifact` |
+| Audio Mix | Gain, ducking, bus | -6dB duck under narration | Editorial/Mastering (P9/P10) |
+
+L-U6 only describes intent. It does NOT generate audio or mix.
+
+### Timing Authority
+
+L-U6 expresses `duration_sec` as semantic intent only. It does NOT
+duplicate timing authority:
+- `NarrationTimeline` (P8) remains the authority for narration timing.
+- `SpeechTiming` (P8) remains the authority for word timestamps.
+- `AnimationPlan` (P7) remains the authority for animation timing.
+
+L-U6 may describe a relationship (e.g. `duck_under_narration`) but does
+NOT compute actual dB.
+
+### Vocabulary Governance
+
+All values come from canonical enums:
+- `SubjectMotionVocabulary` (16 values)
+- `SubjectMotionDirection` (7 values)
+- `SubjectMotionIntensity` (3 values)
+- `SoundLayerCategory` (8 values)
+- `SoundLayerPriority` (4 values)
+- `FramingIntent` (6 values)
+- `SubjectRelationship` (7 values)
+- `CameraDirection` (7 values)
+
+New vocabulary requires a `KnowledgeEntry` promotion (per L-U3).
+The compiler does NOT add new vocabulary on its own.
+
+### Knowledge Boundary
+
+All knowledge access goes through `KnowledgeContext` + `KnowledgeResolver`.
+`KnowledgeCameraMotionSoundAdapter` is a thin adapter (per L-U3).
+No direct `KnowledgeRegistry` access from L-U6.
+
+### Provider Boundary
+
+L-U6 core contains NO provider syntax. Provider-specific serialization
+lives in `ProviderPromptAdapter` subclasses (L-U5).
+
+### Renderer Boundary
+
+L-U6 core contains NO Remotion syntax, NO FFmpeg imports, NO frame
+coordinates, NO React components. L-U6 is purely semantic.
+
+### Backward Compatibility
+
+L-U6 is strictly additive:
+- All L-U5 contracts UNCHANGED.
+- All Animation/Editorial/Voice/Knowledge contracts UNCHANGED.
+- 1208 pre-existing tests pass unchanged.
+- 1314 tests pass after L-U6 (+106 new tests, 0 regressions).
+
+### Why No Cache
+
+The compiler is deterministic. Same inputs → same output. A content-
+addressed fingerprint can be derived downstream if needed. No separate
+cache layer is added by L-U6.
+
+### Why No LLM
+
+The compiler uses deterministic keyword parsing:
+- `slow cinematic push in` → `PUSH_IN`
+- `pan left` → `PAN`, `direction=LEFT`
+- `handheld shake` → `SHAKE`
+
+No LLM, no random, no fuzzy model. Unknown vocabulary → WARN + default.
+
+### Files Created
+
+- `orchestrator/app/prompt/knowledge_adapter.py` — `KnowledgeCameraMotionSoundAdapter`
+- `orchestrator/app/prompt/cms_compiler.py` — `CameraMotionSoundCompiler`
+- `orchestrator/app/prompt/cms_validator.py` — `CameraMotionSoundValidator`
+- `orchestrator/tests/test_camera_motion_sound_compiler.py` — 106 tests
+- `docs/CAMERA_MOTION_SOUND_COMPILER.md` — full documentation
+
+### Files Modified
+
+- `orchestrator/app/prompt/schemas.py` — extended with new contracts
+  (`CameraBlockExt`, `MotionBlockExt`, `SoundBlockExt`,
+  `SubjectMotionSpec`, `SoundLayerSpec`, `SoundLayersSpec`,
+  `CameraMotionSoundCompilationResult`, plus 8 new enums).
+  **L-U5 contracts UNCHANGED.**
+- `orchestrator/app/prompt/__init__.py` — updated header docstring.
+

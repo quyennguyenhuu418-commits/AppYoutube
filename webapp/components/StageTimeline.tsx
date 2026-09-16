@@ -1,4 +1,5 @@
 import { StageInfo } from "@/lib/api";
+import { vi } from "@/lib/i18n";
 
 const STATUS_BADGE: Record<string, { bg: string; icon: string }> = {
   pending: { bg: "bg-slate-700 text-slate-300", icon: "•" },
@@ -10,18 +11,19 @@ const STATUS_BADGE: Record<string, { bg: string; icon: string }> = {
 
 export function StageTimeline({ stages }: { stages: StageInfo[] }) {
   if (stages.length === 0) {
-    return <div className="text-slate-400">Stages haven't started yet...</div>;
+    return <div className="text-slate-400">{vi.stagesNotStarted}</div>;
   }
   return (
     <ol className="space-y-2">
       {stages.map((s) => {
         const badge = STATUS_BADGE[s.status] ?? STATUS_BADGE.pending;
+        const label = vi.stages[s.name as keyof typeof vi.stages] || s.label;
         return (
           <li key={s.name} className="flex items-center gap-3 rounded-lg bg-slate-800/50 px-4 py-2">
             <span className={`w-6 h-6 rounded-full grid place-items-center text-xs ${badge.bg}`}>
               {badge.icon}
             </span>
-            <span className="flex-1">{s.label}</span>
+            <span className="flex-1">{label}</span>
             {s.error && <span className="text-xs text-red-300 truncate max-w-md">{s.error}</span>}
           </li>
         );

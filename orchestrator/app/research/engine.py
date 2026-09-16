@@ -692,13 +692,305 @@ If the text contains no verifiable factual claims, return {{"claims": []}}."""
     def _detect_contradictions(self, ctx: ResearchContext) -> ResearchContext:
         """Detect contradictory claim pairs.
 
-        Stub implementation: simple O(n^2) check on same-topic claims with
-        opposing confidence signals. Real implementation would use semantic
-        similarity. See docs/TECHNICAL_DEBT.md C-001.
+        Deterministic implementation: pairwise comparison of claims in the
+        same semantic category that contain explicit opposing polarity
+        markers ("increased" vs "decreased", "before" vs "after", etc.)
+
+        Two claims are flagged as contradictory when:
+        1. They share the same topic (same keyword set or same category)
+        2. They contain opposite-direction changes or numbers
+        3. They come from independent sources
         """
-        # NOTE: This is a minimal stub. Future work: NLP-based detection.
-        # For now we leave contradictions empty; callers should not assume
-        # any contradictions will be found.
+        from app.schemas.research_package import Contradiction, ContradictionResolution
+
+        claims = ctx.claims
+        if len(claims) < 2:
+            return ctx
+
+        # Polarity markers that indicate opposing claims
+        positive_polarity = (
+            "increased", "grew", "growing", "rose", "rising", "higher",
+            "more", "larger", "faster", "boosted", "elevated",
+        )
+        negative_polarity = (
+            "decreased", "declined", "dropped", "fell", "falling",
+            "lower", "less", "smaller", "slower", "reduced",
+        )
+
+        def _normalize(text: str) -> set[str]:
+            return set(text.lower().split())
+
+        def _has_marker(text_lower: str, markers: tuple[str, ...]) -> bool:
+            padded = f" {text_lower} "
+            return any(f" {m} " in padded or padded.startswith(f"{m} ") for m in markers)
+
+        pairs_added = 0
+        next_id = 1
+
+        for i, claim_a in enumerate(claims):
+            for j, claim_b in enumerate(claims):
+                if j <= i:
+                    continue
+                # Skip same-source comparisons (they're already aligned)
+                if claim_a.source_ids and claim_b.source_ids:
+                    if set(claim_a.source_ids) & set(claim_b.source_ids):
+                        continue
+
+                text_a = claim_a.text.lower()
+                text_b = claim_b.text.lower()
+
+                # Check for opposing polarity in similar topic
+                a_pos = _has_marker(text_a, positive_polarity)
+                a_neg = _has_marker(text_a, negative_polarity)
+                b_pos = _has_marker(text_b, positive_polarity)
+                b_neg = _has_marker(text_b, negative_polarity)
+
+                # Same topic check (simple word overlap)
+                words_a = _normalize(text_a)
+                words_b = _normalize(text_b)
+                # Filter stopwords
+                stopwords = {"the", "a", "an", "is", "was", "were", "are", "in", "of", "to", "and"}
+                words_a -= stopwords
+                words_b -= stopwords
+                if not words_a or not words_b:
+                    continue
+                overlap = words_a & words_b
+                shared_ratio = len(overlap) / min(len(words_a), len(words_b))
+
+                same_topic = shared_ratio >= 0.3  # 30% overlap
+
+                contradictory = same_topic and (
+                    (a_pos and b_neg) or (a_neg and b_pos)
+                )
+
+                if contradictory:
+                    pair_id = f"CTR-{next_id:03d}"
+                    next_id += 1
+                    pair = Contradiction(
+                        id=pair_id,
+                        claim_id_a=claim_a.claim_id,
+                        claim_id_b=claim_b.claim_id,
+                        position_a=claim_a.text,
+                        position_b=claim_b.text,
+                        possible_reason="Opposing polarity markers in shared topic",
+                        resolution=ContradictionResolution.UNRESOLVED,
+                        resolution_notes=f"Auto-detected (overlap={shared_ratio:.2f})",
+                    )
+                    ctx.contradictions.append(pair)
+                    pairs_added += 1
+                    if pairs_added >= 20:  # Cap to avoid combinatorial explosion
+                        return ctx
+
+        return ctx
+
+    def _extract_geography(self, ctx: ResearchContext) -> ResearchContext:
+        """Extract geographic references from sources and claims.
+
+        Detects common patterns:
+        - Named locations (countries, cities, landmarks)
+        - Coordinates or relative locations
+        - Geographic terms (river, mountain, etc.)
+        """
+        from app.schemas.research_package import GeographicSite
+
+        # Common geographic terms to detect
+        known_patterns = {
+            # Continents
+            "africa": "Africa",
+            "asia": "Asia",
+            "europe": "Europe",
+            "north america": "North America",
+            "south america": "South America",
+            "australia": "Australia",
+            "antarctica": "Antarctica",
+            # Oceans
+            "pacific ocean": "Pacific Ocean",
+            "atlantic ocean": "Atlantic Ocean",
+            "indian ocean": "Indian Ocean",
+            "arctic ocean": "Arctic Ocean",
+            # Generic features
+            "river": "river",
+            "mountain": "mountain",
+            "desert": "desert",
+            "valley": "valley",
+            "island": "island",
+            "ocean": "ocean",
+        }
+
+        # Collect all text from sources and claims
+        all_text = []
+        for src in ctx.raw_sources:
+            if hasattr(src, "text") and src.text:
+                all_text.append(src.text)
+            elif hasattr(src, "title") and src.title:
+                all_text.append(src.title)
+            elif hasattr(src, "url"):
+                all_text.append(src.url)
+        for src in ctx.deduped_sources:
+            if hasattr(src, "text") and src.text:
+                all_text.append(src.text)
+            elif hasattr(src, "title") and src.title:
+                all_text.append(src.title)
+        for claim in ctx.claims:
+            all_text.append(claim.text)
+
+        full_text = " ".join(all_text).lower()
+
+        seen: set[str] = set()
+        for keyword, name in known_patterns.items():
+            if keyword in full_text and keyword not in seen:
+                seen.add(keyword)
+                ctx.geography.append(GeographicSite(
+                    name=name,
+                    region=keyword,
+                    country="",
+                    evidence=keyword,
+                ))
+
+        return ctx
+
+    def _extract_quantitative_facts(self, ctx: ResearchContext) -> ResearchContext:
+        """Extract numerical facts from claims.
+
+        Detects:
+        - Year references (1900-2099)
+        - Percentages (X%)
+        - Quantities (X thousand/million/billion)
+        - Measurements (km, m, °C, etc.)
+        """
+        import re
+
+        from app.schemas.research_package import QuantitativeFact
+
+        # Regex patterns for numeric facts
+        year_re = re.compile(r"\b(1[0-9]{3}|20[0-9]{2})\b")
+        percent_sign_re = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+        percent_word_re = re.compile(r"\b(\d+(?:\.\d+)?)\s*percent\b", re.IGNORECASE)
+        million_re = re.compile(r"\b(\d+(?:\.\d+)?)\s*(million|billion|thousand)\b", re.IGNORECASE)
+        km_re = re.compile(r"\b(\d+(?:\.\d+)?)\s*(km|kilometer|kilometre|mile|meter|metre)\b", re.IGNORECASE)
+        temp_re = re.compile(r"\b(\-?\d+(?:\.\d+)?)\s*(?:°|degrees?)\s*([CF])\b")
+
+        seen_facts: set[str] = set()
+        next_id = 1
+
+        for claim in ctx.claims:
+            text = claim.text
+
+            def _make_id() -> str:
+                nonlocal next_id
+                qfid = f"QF-{next_id:03d}"
+                next_id += 1
+                return qfid
+
+            # Years (as integer year, no unit)
+            for m in year_re.finditer(text):
+                year_str = m.group(1)
+                key = f"year:{year_str}"
+                if key not in seen_facts:
+                    seen_facts.add(key)
+                    try:
+                        ctx.quantitative_facts.append(QuantitativeFact(
+                            id=_make_id(),
+                            value=float(year_str),
+                            unit="year",
+                            context=text[:100],
+                            approximate=False,
+                            source_ids=list(claim.source_ids) if claim.source_ids else [],
+                        ))
+                    except Exception:
+                        pass
+
+            # Percentages
+            for m in percent_sign_re.finditer(text):
+                value_str = m.group(1)
+                key = f"percent:{value_str}"
+                if key not in seen_facts:
+                    seen_facts.add(key)
+                    try:
+                        ctx.quantitative_facts.append(QuantitativeFact(
+                            id=_make_id(),
+                            value=float(value_str),
+                            unit="percent",
+                            context=text[:100],
+                            source_ids=list(claim.source_ids) if claim.source_ids else [],
+                        ))
+                    except Exception:
+                        pass
+            for m in percent_word_re.finditer(text):
+                value_str = m.group(1)
+                key = f"percent:{value_str}"
+                if key not in seen_facts:
+                    seen_facts.add(key)
+                    try:
+                        ctx.quantitative_facts.append(QuantitativeFact(
+                            id=_make_id(),
+                            value=float(value_str),
+                            unit="percent",
+                            context=text[:100],
+                            source_ids=list(claim.source_ids) if claim.source_ids else [],
+                        ))
+                    except Exception:
+                        pass
+
+            # Quantities (million/billion/thousand)
+            for m in million_re.finditer(text):
+                value_str = m.group(1)
+                unit_str = m.group(2).lower()
+                key = f"quantity:{value_str}:{unit_str}"
+                if key not in seen_facts:
+                    seen_facts.add(key)
+                    multiplier = {"thousand": 1_000, "million": 1_000_000, "billion": 1_000_000_000}.get(unit_str, 1)
+                    try:
+                        ctx.quantitative_facts.append(QuantitativeFact(
+                            id=_make_id(),
+                            value=float(value_str) * multiplier,
+                            unit=unit_str,
+                            context=text[:100],
+                            source_ids=list(claim.source_ids) if claim.source_ids else [],
+                        ))
+                    except Exception:
+                        pass
+
+            # Distances
+            for m in km_re.finditer(text):
+                value_str = m.group(1)
+                unit_str = m.group(2).lower()
+                key = f"distance:{value_str}:{unit_str}"
+                if key not in seen_facts:
+                    seen_facts.add(key)
+                    try:
+                        ctx.quantitative_facts.append(QuantitativeFact(
+                            id=_make_id(),
+                            value=float(value_str),
+                            unit=unit_str,
+                            context=text[:100],
+                            source_ids=list(claim.source_ids) if claim.source_ids else [],
+                        ))
+                    except Exception:
+                        pass
+
+            # Temperatures
+            for m in temp_re.finditer(text):
+                value_str = m.group(1)
+                unit_str = "°" + m.group(2).upper()
+                key = f"temp:{value_str}:{unit_str}"
+                if key not in seen_facts:
+                    seen_facts.add(key)
+                    try:
+                        ctx.quantitative_facts.append(QuantitativeFact(
+                            id=_make_id(),
+                            value=float(value_str),
+                            unit=unit_str,
+                            context=text[:100],
+                            source_ids=list(claim.source_ids) if claim.source_ids else [],
+                        ))
+                    except Exception:
+                        pass
+
+            # Cap to avoid flooding
+            if len(ctx.quantitative_facts) >= 200:
+                break
+
         return ctx
 
     def _model_uncertainty(self, ctx: ResearchContext) -> ResearchContext:

@@ -47,6 +47,7 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.providers.base import LLMMessage, LLMRequest
 from app.providers.llm import get_llm_provider
+from app.knowledge import KnowledgeStoryboardAdapter
 from app.schemas.research_package import (
     Claim,
     ResearchPackage,
@@ -335,12 +336,17 @@ class StoryboardEngine:
         job_id: str,
         use_mock: bool = False,
         use_cache: bool = False,
+        knowledge_adapter: KnowledgeStoryboardAdapter | None = None,
     ) -> None:
         self.job_id = job_id
         self.use_mock = use_mock
         self.use_cache = use_cache
         self._llm = get_llm_provider()
         self._logger = get_logger(f"storyboard.{job_id}")
+        # L-U2: optional Knowledge Layer adapter. When None, the engine
+        # behaves exactly as before (backward compatible). When provided,
+        # the adapter is consulted for camera/motion/style hints.
+        self._knowledge_adapter = knowledge_adapter
 
     # ------------------------------------------------------------------
     # Public entrypoint
@@ -778,33 +784,52 @@ class StoryboardEngine:
     # ------------------------------------------------------------------
 
     def _apply_camera_motion(self, beats: list[VisualBeat]) -> list[VisualBeat]:
-        """Apply mode-based defaults; add editorial intent."""
+        """Apply mode-based defaults; add editorial intent.
+
+        L-U2: when ``self._knowledge_adapter`` is set, consult it for
+        camera + motion hints derived from the Knowledge Layer. When
+        not set, behavior is identical to pre-L-U2.
+        """
         for beat in beats:
             defaults = self._MODE_DEFAULTS.get(beat.visual_mode, {})
 
-            # Camera
-            cam_type = defaults.get("camera", StoryboardCameraType.STATIC)
+            # Camera: prefer knowledge-derived choice if adapter present
+            if self._knowledge_adapter is not None and self._knowledge_adapter.is_active():
+                cam_type = self._knowledge_adapter.get_camera_for_mode(beat.visual_mode)
+                cam_reason = self._knowledge_adapter.get_camera_reason(beat.visual_mode)
+                if cam_reason is not None:
+                    cam_reason_text = cam_reason
+                else:
+                    cam_reason_text = self._camera_reason(beat, cam_type)
+            else:
+                cam_type = defaults.get("camera", StoryboardCameraType.STATIC)
+                cam_reason_text = self._camera_reason(beat, cam_type)
             camera = CameraPlan(
                 camera_id=f"cam_{beat.beat_id}",
                 type=cam_type,
                 duration_sec=beat.duration,
                 focus="center",
                 easing="ease_in_out",
-                reason=self._camera_reason(beat, cam_type),
+                reason=cam_reason_text,
                 start_zoom=1.0,
                 end_zoom=self._zoom_for_type(cam_type),
             )
             beat.camera = camera
 
-            # Motion
-            motion_type = defaults.get("motion", StoryboardMotionType.NONE)
+            # Motion: prefer knowledge-derived choice if adapter present
+            if self._knowledge_adapter is not None and self._knowledge_adapter.is_active():
+                motion_type = self._knowledge_adapter.get_motion_for_mode(beat.visual_mode)
+                motion_intensity = self._knowledge_adapter.get_motion_intensity(beat.visual_mode)
+            else:
+                motion_type = defaults.get("motion", StoryboardMotionType.NONE)
+                motion_intensity = 0.5
             if motion_type != StoryboardMotionType.NONE:
                 beat.motion = [
                     MotionItem(
                         motion_type=motion_type,
                         target="subject",
                         duration_sec=beat.duration,
-                        intensity=0.5,
+                        intensity=motion_intensity,
                         purpose=self._motion_purpose(motion_type),
                     )
                 ]

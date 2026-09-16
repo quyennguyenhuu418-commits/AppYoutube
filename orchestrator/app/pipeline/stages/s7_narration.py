@@ -14,7 +14,7 @@ log = get_logger(__name__)
 
 class NarrationStage(Stage):
     name = "narration"
-    label = "Narration"
+    label = "Lời bình"
 
     def run(self, ctx: StageContext) -> dict:
         audio_path = job_dir(ctx.job_id) / "narration.mp3"

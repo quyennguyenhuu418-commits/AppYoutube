@@ -120,7 +120,7 @@ def _validate_asset_integrity(
 
 class ValidateStage(Stage):
     name = "validate"
-    label = "Validate"
+    label = "Xác thực"
 
     def run(self, ctx: StageContext) -> dict:
         path = stage_path(ctx.job_id, "scene_definition")

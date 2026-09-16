@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 # Repository root is the parent of the `orchestrator` directory. We use this
@@ -41,14 +42,46 @@ class Settings(BaseSettings):
     workspace_dir: Path = Field(default=Path("./workspace"))
     database_url: str = "sqlite:///./workspace/app.db"
 
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def _parse_cors_origins(cls, v: str | list[str]) -> list[str]:
+    def _parse_cors_origins(cls, v):
         if isinstance(v, list):
-            return [x.strip() for x in v if x.strip()]
-        return [x.strip() for x in v.split(",") if x.strip()]
+            return [str(x).strip() for x in v if str(x).strip()]
+        if isinstance(v, str):
+            # Try JSON list first, fall back to comma-separated
+            v = v.strip()
+            if v.startswith("["):
+                import json as _json
+                try:
+                    parsed = _json.loads(v)
+                    return [str(x).strip() for x in parsed if str(x).strip()]
+                except Exception:
+                    pass
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return v
+
+    # ----- Groq LLM (FREE) -----
+    groq_api_key: str = ""
+    groq_llm_model: str = "groq/compound-mini"
+
+    # ----- OpenRouter LLM -----
+    openrouter_api_key: str = ""
+    openrouter_llm_model: str = "anthropic/claude-3-haiku"
+
+    # ----- Gemini -----
+    # Hỗ trợ rotate qua nhiều key: GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, ...
+    # Khi key chính hết quota/rate limit, tự động chuyển sang key tiếp theo.
+    gemini_api_key: str = ""
+    gemini_api_key_2: str = ""
+    gemini_api_key_3: str = ""
+    gemini_api_key_4: str = ""
+    gemini_api_key_5: str = ""
+
+    # ----- Cursor SDK (Modal) -----
+    cursor_api_key: str = ""
+    cursor_model: str = "composer-2.5"
 
     # ----- OpenAI -----
     openai_api_key: str = ""
@@ -118,8 +151,33 @@ class Settings(BaseSettings):
         return bool(self.openai_api_key.strip())
 
     @property
+    def has_groq(self) -> bool:
+        return bool(self.groq_api_key.strip())
+
+    @property
+    def has_cursor(self) -> bool:
+        return bool(self.cursor_api_key.strip())
+
+    @property
     def has_elevenlabs(self) -> bool:
         return bool(self.elevenlabs_api_key.strip())
+
+    @property
+    def gemini_api_keys(self) -> list[str]:
+        """Trả về danh sách Gemini keys theo thứ tự ưu tiên.
+        Dùng cho rotation: key 1 hết quota → dùng key 2 → ..."""
+        keys = [
+            self.gemini_api_key,
+            self.gemini_api_key_2,
+            self.gemini_api_key_3,
+            self.gemini_api_key_4,
+            self.gemini_api_key_5,
+        ]
+        return [k.strip() for k in keys if k.strip()]
+
+    @property
+    def has_gemini(self) -> bool:
+        return bool(self.gemini_api_keys)
 
 
 @lru_cache(maxsize=1)

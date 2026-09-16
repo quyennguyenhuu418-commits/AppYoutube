@@ -575,3 +575,233 @@ export const assetApi = {
     ),
 };
 
+
+// ---- Shorts types (P13) ----
+
+export interface ShortsSourceContext {
+  job_id: string;
+  source_video_path: string;
+  source_duration_sec: number;
+  source_width: number;
+  source_height: number;
+  source_fps: number;
+  source_ar: string;
+  caption_track_id: string | null;
+}
+
+export interface SceneCropSpec {
+  scene_id: string;
+  scene_label: string;
+  start_sec: number;
+  end_sec: number;
+  crop_mode: string;
+  focus_x: number | null;
+  focus_y: number | null;
+  has_narration: boolean;
+  has_diagram: boolean;
+  emotional_intent: string | null;
+}
+
+export interface CaptionPositionOverride {
+  vertical_position: number;
+  horizontal_align: string;
+  font_scale: number;
+  max_width_pct: number;
+}
+
+export interface ShortsRenderSettings {
+  target_resolution: [number, number];
+  target_fps: number;
+  max_duration_sec: number;
+  min_duration_sec: number;
+  format: string;
+  quality: string;
+  audio_bitrate_kbps: number;
+  video_bitrate_kbps: number;
+}
+
+export interface ShortsCompilationResult {
+  shorts_id: string;
+  job_id: string;
+  source: ShortsSourceContext;
+  selected_scene: SceneCropSpec;
+  crop_mode: string;
+  aspect_ratio: string;
+  render_settings: ShortsRenderSettings;
+  caption_override: CaptionPositionOverride | null;
+  clip_start_sec: number;
+  clip_end_sec: number;
+  clip_duration_sec: number;
+  crop_center_x: number;
+  crop_center_y: number;
+  composition_notes: string;
+  output_filename: string;
+  output_resolution: string;
+  compiler_version: string;
+  compiled_at: string;
+}
+
+export interface ShortsPlan {
+  job_id: string;
+  shorts_ids: string[];
+  results: ShortsCompilationResult[];
+  generate_multiple: boolean;
+  max_shorts: number;
+  diversify_scenes: boolean;
+  target_platforms: string[];
+  compiled_at: string;
+}
+
+export interface ShortsQAReport {
+  shorts_id: string;
+  job_id: string;
+  output_path: string;
+  format_valid: boolean;
+  aspect_ratio_correct: boolean;
+  duration_within_limits: boolean;
+  has_video: boolean;
+  has_audio: boolean;
+  audio_level_dbfs: number | null;
+  file_size_bytes: number;
+  passed: boolean;
+  notes: string[];
+}
+
+export interface ShortsStageResult {
+  plan_path: string;
+  shorts_count: number;
+  shorts: Array<{
+    shorts_id: string;
+    path: string;
+    start_sec: number;
+    end_sec: number;
+    duration_sec: number;
+    scene_id: string;
+    scene_label: string;
+    crop_center_x: number;
+    crop_center_y: number;
+    output_resolution: string;
+    qa: ShortsQAReport;
+  }>;
+  fingerprint: string;
+}
+
+
+// ---- Thumbnail types (P14) ----
+
+export interface ThumbnailRenderSettings {
+  format: string;
+  width: number;
+  height: number;
+  quality: number;
+}
+
+export interface ThumbnailTextOverlay {
+  text: string;
+  position: string;
+  font_size: number;
+  color: string;
+  stroke_color: string;
+  stroke_width: number;
+  max_lines: number;
+  bold: boolean;
+  shadow: boolean;
+}
+
+export interface ThumbnailSource {
+  source_type: string;
+  capture_time_sec: number;
+  diagram_scene_id: string | null;
+  title_text: string | null;
+  character_id: string | null;
+  scene_label: string | null;
+}
+
+export interface ThumbnailCompilationResult {
+  thumbnail_id: string;
+  job_id: string;
+  source: ThumbnailSource;
+  color_scheme: string;
+  text_overlay: ThumbnailTextOverlay | null;
+  include_title: boolean;
+  include_topic: boolean;
+  render_settings: ThumbnailRenderSettings;
+  output_filename: string;
+  caption: string;
+  composition_notes: string;
+  source_video_path: string | null;
+  source_scene_id: string | null;
+  versions: Record<string, string>;
+  output_path: string;
+  compiler_version: string;
+  compiled_at: string;
+}
+
+export interface ThumbnailPlan {
+  job_id: string;
+  thumbnails: ThumbnailCompilationResult[];
+  generate_for_scenes: boolean;
+  generate_for_title: boolean;
+  generate_for_social: boolean;
+  compiled_at: string;
+}
+
+export interface ThumbnailQAReport {
+  thumbnail_id: string;
+  job_id: string;
+  output_path: string;
+  file_exists: boolean;
+  format_valid: boolean;
+  dimensions_correct: boolean;
+  file_size_bytes: number;
+  has_content: boolean;
+  has_text: boolean;
+  file_size_kb: number;
+  passed: boolean;
+  notes: string[];
+}
+
+export interface ThumbnailStageResult {
+  plan_path: string;
+  thumbnail_count: number;
+  thumbnails: Array<{
+    thumbnail_id: string;
+    path: string;
+    output_filename: string;
+    dimensions: string;
+    format: string;
+    caption: string;
+    qa: ThumbnailQAReport;
+  }>;
+  fingerprint: string;
+}
+
+
+// ---- Shorts + Thumbnail API ----
+
+export const mediaApi = {
+  /** GET /api/jobs/{job_id}/shorts — get shorts stage result */
+  getShorts: (jobId: string) =>
+    http<ShortsStageResult>(`/api/jobs/${encodeURIComponent(jobId)}/shorts`),
+
+  /** GET /api/jobs/{job_id}/shorts/plan — get shorts plan JSON */
+  getShortsPlan: (jobId: string) =>
+    http<ShortsPlan>(`/api/jobs/${encodeURIComponent(jobId)}/shorts/plan`),
+
+  /** GET /api/jobs/{job_id}/shorts/{shorts_id}/video — stream short MP4 */
+  shortsVideoUrl: (jobId: string, shortsId: string) =>
+    `/api/jobs/${encodeURIComponent(jobId)}/shorts/${encodeURIComponent(shortsId)}/video`,
+
+  /** GET /api/jobs/{job_id}/thumbnails — get thumbnail stage result */
+  getThumbnails: (jobId: string) =>
+    http<ThumbnailStageResult>(`/api/jobs/${encodeURIComponent(jobId)}/thumbnails`),
+
+  /** GET /api/jobs/{job_id}/thumbnails/plan — get thumbnail plan JSON */
+  getThumbnailPlan: (jobId: string) =>
+    http<ThumbnailPlan>(`/api/jobs/${encodeURIComponent(jobId)}/thumbnails/plan`),
+
+  /** GET /api/jobs/{job_id}/thumbnails/{thumbnail_id} — serve thumbnail image */
+  thumbnailUrl: (jobId: string, thumbnailId: string) =>
+    `/api/jobs/${encodeURIComponent(jobId)}/thumbnails/${encodeURIComponent(thumbnailId)}`,
+};
+

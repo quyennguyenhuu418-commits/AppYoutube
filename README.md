@@ -1,378 +1,262 @@
 # AI Documentary Animation Factory
 
-一个 **输入主题、输出纪录片视频** 的 AI 生产系统。模仿现代 2D / 火柴人科普频道的内容语法（好奇心驱动的提问、口播解说、简洁角色、动态镜头、信息图动画），但视觉与文案完全原创。
+Hệ thống sản xuất video documentary bằng AI - **nhập chủ đề, xuất video**.
 
-> 用户在前端输入一个主题（例如 `How Did Ancient Humans Survive Deadly Winters?`），系统会自动完成：检索 → 论点 → 标题 → 脚本 → 分镜 → 角色与背景素材 → 口播音频 → 场景 JSON → 渲染成片 → 自动切短视频。
+> Giao diện: **Tiếng Việt** | Nội dung video: **Tiếng Anh (US/UK)**
 
-> **核心设计原则**：大语言模型（LLM）**绝不直接写视频代码**。LLM 只输出严格的 `SceneDefinition` JSON，真正的几何 / 动画由确定性渲染器（Remotion）执行。
+> Hệ thống bắt chước phong cách của các kênh documentary 2D / stick-figure giáo dục hiện đại (câu hỏi thúc đẩy tò mò, commentary bằng giọng nói, nhân vật đơn giản, camera động, infographic animation), nhưng hoàn toàn tự sáng tạo về hình ảnh và văn bản.
 
----
+> Người dùng nhập chủ đề (ví dụ: `How Did Ancient Humans Survive Deadly Winters?`), hệ thống sẽ tự động: nghiên cứu → luận điểm → tiêu đề → kịch bản → storyboard → tài nguyên nhân vật/background → audio narration → scene JSON → render video → cắt Short 9:16.
 
-## 系统组成
-
-```
-videoAI/
-├── orchestrator/   # Python (FastAPI) 后端 + 流水线编排
-├── renderer/       # Node (Remotion) 视频渲染器
-├── webapp/         # Next.js 控制台前端
-├── workspace/      # 每个任务的产物（自动生成，git 忽略）
-└── README.md       # 你正在读的文件
-```
+> **Nguyên tắc thiết kế cốt lõi**: LLM **không bao giờ viết code video trực tiếp**. LLM chỉ xuất JSON `SceneDefinition` nghiêm ngặt, animation và hình học thực sự do renderer确定性 (Remotion) thực thi.
 
 ---
 
-## 0. 先决条件（Windows）
+## 🚀 Tính năng đã hoàn thành
 
-在开始之前，请先在你的电脑上安装以下三样工具。我无法在当前会话里帮你安装，所以请按顺序操作：
-
-### 0.1 Python 3.11 或以上
-
-1. 打开 https://www.python.org/downloads/windows/
-2. 下载最新的 Python 3.11.x 或 3.12.x 安装包。
-3. 运行安装包：**务必勾选** `Add Python to PATH`，然后点 `Install Now`。
-4. 打开 PowerShell，输入：
-   ```powershell
-   python --version
-   ```
-   应该看到类似 `Python 3.11.9` 的输出。
-
-### 0.2 Node.js 20 或以上
-
-1. 打开 https://nodejs.org/en/download
-2. 下载 `Windows Installer (.msi)` 的 LTS 版本（20.x 或更新）。
-3. 运行安装包，一路下一步。
-4. 打开 PowerShell，输入：
-   ```powershell
-   node --version
-   npm --version
-   ```
-   应该看到 `v20.x.x` 和 `10.x.x`。
-
-### 0.3 FFmpeg
-
-1. 打开 https://www.gyan.dev/ffmpeg/builds/
-2. 下载 `ffmpeg-release-essentials.zip`。
-3. 解压到一个**不会变动的路径**，例如 `C:\ffmpeg\`。
-4. 把 `C:\ffmpeg\bin` 加入系统环境变量 `Path`：
-   - Win+R → 输入 `sysdm.cpl` → `高级` → `环境变量`
-   - 在 `Path` 里新建一项，填入 `C:\ffmpeg\bin`
-   - 确定 → 关闭所有窗口
-5. **重新打开** PowerShell，输入：
-   ```powershell
-   ffmpeg -version
-   ```
-   应该看到版本信息。
-
-> 完成以上三步后，整个系统就可以跑起来了。下面教你启动它。
+- ✅ **Backend FastAPI** với **13 stages pipeline** (s1→s13: research → publishing)
+- ✅ **Groq LLM Provider** (MIỄN PHÍ, NHANH) - dùng `groq/compound-mini`
+- ✅ **Cursor SDK Provider** - dùng Modal Agent để research/script
+- ✅ **OpenAI/ElevenLabs** providers (optional)
+- ✅ **Mock LLM Provider** - chạy demo không cần API key
+- ✅ **FFmpeg** - render video thực
+- ✅ **Remotion renderer** - video composition
+- ✅ **Next.js webapp** - giao diện quản lý
+- ✅ **P13 Shorts Generator** - 9:16 vertical clips (TikTok/Reels)
+- ✅ **P14 Thumbnail Generator** - YouTube/Twitter/Instagram thumbnails
+- ✅ **P15 Multi-platform Publishing** - metadata cho YouTube + TikTok + Facebook
+- ✅ **P16 Real Platform API Clients** - credential-based YouTube/TikTok/Facebook clients
+- ✅ **Research Engine v16.5** - contradiction detection, geographic + quantitative extraction
 
 ---
 
-## 1. 安装项目
+## 🔧 Cài đặt nhanh (Windows)
 
-打开 PowerShell，进入项目目录：
+### Yêu cầu hệ thống
+- Python 3.11+ (đã cài)
+- Node.js 20+ (cài từ https://nodejs.org)
+- FFmpeg (đã cài tại `C:\ffmpeg\ffmpeg-9.0.1-essentials_build\bin`)
 
+### Bước 1: Khởi động Backend
 ```powershell
-cd c:\Users\Administrator\Downloads\videoAI
-```
-
-依次执行：
-
-```powershell
-# 1) Python 后端依赖
+cd C:\Users\Administrator\Downloads\video\AppYoutube
+.\orchestrator\.venv\Scripts\activate
 cd orchestrator
-py -3.11 -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-cd ..
-
-# 2) Node 渲染器依赖
-cd renderer
-npm install
-cd ..
-
-# 3) Next.js 前端依赖
-cd webapp
-npm install
-cd ..
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-> 安装比较慢很正常，主要是 PyTorch 之类的包。请耐心等待。
-
----
-
-## 2. 配置 API 密钥（可跳过）
-
-回到项目根目录：
-
+### Bước 2: Khởi động Frontend (terminal khác)
 ```powershell
-cd c:\Users\Administrator\Downloads\videoAI
-copy .env.example .env
+cd C:\Users\Administrator\Downloads\video\AppYoutube\webapp
+npm install
+npm run dev
 ```
 
-用记事本打开 `.env`，填入：
+Mở trình duyệt: http://localhost:3000
 
-- `OPENAI_API_KEY`：在 https://platform.openai.com/api-keys 申请。
-- `ELEVENLABS_API_KEY`：在 https://elevenlabs.io 申请。
-- `ELEVENLABS_VOICE_ID`：选一个你喜欢的男声或女声 ID。
-- `OPENAI_IMAGE_MODEL`：默认 `dall-e-3`。
-
-> **如果你暂时没有 API 密钥，也可以继续！** 系统会**自动启用 mock 模式**：所有 LLM 阶段返回固定的演示剧本，所有 TTS 阶段用 Google TTS 兜底，你依然可以跑通整个流水线并产出一个完整的演示视频。这让你在花钱之前就能验证系统。
+### Hoặc dùng `start.bat` (khuyến nghị)
+```cmd
+cd C:\Users\Administrator\Downloads\video\AppYoutube
+start.bat
+```
 
 ---
 
-## 3. 启动系统
+## 📡 API Endpoints
 
-回到根目录，双击或运行：
+### Health Check
+```
+GET http://localhost:8000/health
+```
+Returns:
+```json
+{
+  "status": "ok",
+  "openai_configured": false,
+  "groq_configured": true,
+  "cursor_configured": false,
+  "elevenlabs_configured": false,
+  "cache_mode": "always",
+  "groq_model": "groq/compound-mini"
+}
+```
 
+### Tạo job video
+```
+POST http://localhost:8000/jobs
+Content-Type: application/json
+
+{
+  "topic": "How Did Ancient Humans Survive Deadly Winters?",
+  "duration_sec": 120,
+  "language": "en"
+}
+```
+
+### Check job status
+```
+GET http://localhost:8000/jobs/{job_id}
+```
+
+### Distribution (after job completes)
+```
+# Generate 9:16 Shorts
+GET http://localhost:8000/jobs/{job_id}/shorts
+
+# Generate thumbnails
+GET http://localhost:8000/jobs/{job_id}/thumbnails
+
+# Plan publishing to YouTube/TikTok/Facebook
+POST http://localhost:8000/publishing/preflight
+POST http://localhost:8000/publishing/finalize
+GET http://localhost:8000/publishing/{job_id}/plan
+```
+
+---
+
+## 🔑 Lấy Cursor API Key
+
+⚠️ **Lưu ý quan trọng**: Cursor API key **chỉ tạo được trên web dashboard**, không tạo được trong IDE.
+
+### Cách lấy:
+1. Mở browser: https://cursor.com/dashboard/integrations
+2. Đăng nhập bằng tài khoản Cursor của bạn
+3. Click **"New API Key"**
+4. Copy key (dạng `cursor_xxxxxxxxxx`)
+5. Thêm vào `.env`:
+   ```
+   CURSOR_API_KEY=cursor_xxxxxxxxxx
+   ```
+
+### Nếu không có API key
+Vẫn dùng được Cursor Modal qua **Cursor IDE chat** (Ctrl+I / Cmd+I). Nhưng không tự động hóa được từ pipeline.
+
+## 🤖 LLM Providers (ưu tiên theo thứ tự)
+
+| Provider | Cost | Speed | Quality | Setup |
+|----------|------|-------|---------|-------|
+| **Cursor SDK** | Dùng request của bạn | ⚡⚡ | ⭐⭐⭐⭐⭐ | Cần `CURSOR_API_KEY` |
+| **Groq** | FREE | ⚡⚡⚡ | ⭐⭐⭐ | ✅ Đã cấu hình |
+| **OpenAI** | $$$ | ⚡⚡ | ⭐⭐⭐⭐⭐ | Cần `OPENAI_API_KEY` |
+| **Mock** | FREE | ⚡⚡⚡ | Demo | Mặc định |
+
+---
+
+## 🧪 Test thủ công
+
+### Test Groq Provider
 ```powershell
-.\start.bat
+cd orchestrator
+.\.venv\Scripts\python.exe test_groq_provider.py
 ```
 
-这个脚本会启动三个进程：
+### Test Cursor Agent (cần CURSOR_API_KEY)
+```powershell
+cd orchestrator
+.\.venv\Scripts\python.exe demo_cursor_agent.py
+```
 
-| 进程 | 地址 | 作用 |
-|------|------|------|
-| 后端 | http://localhost:8000 | 流水线编排 + REST API |
-| 渲染器 | （按需调用） | 把场景 JSON 渲染成 MP4 |
-| 前端 | http://localhost:3000 | 控制台 |
-
-打开浏览器访问 **http://localhost:3000**。
+### Test Pipeline đầy đủ
+```powershell
+cd scripts
+..\orchestrator\.venv\Scripts\python.exe editorial_smoke_test.py
+```
 
 ---
 
-## 4. 第一次生成
-
-1. 在首页输入框写下一个主题，例如：
-   > How Did Ancient Humans Survive Deadly Winters?
-2. 点击 **生成视频** 按钮。
-3. 系统会创建任务并跳转到详情页。你会看到 11 个阶段（研究、论点、标题、脚本、分镜、素材、口播、场景 JSON、校验、渲染、Shorts）依次跑过。
-4. 第一次跑大约需要 2-5 分钟（取决于素材生成速度）。
-5. 跑完后页面底部会出现视频播放器，点击播放。
-
----
-
-## 5. 项目结构
+## 📁 Cấu trúc dự án
 
 ```
-videoAI/
-├── orchestrator/                  # Python 后端
+AppYoutube/
+├── orchestrator/              # Python FastAPI backend
 │   ├── app/
-│   │   ├── main.py                # FastAPI 入口
-│   │   ├── api/                   # REST 接口
-│   │   ├── core/                  # 配置 / 日志 / 路径
-│   │   ├── pipeline/              # 流水线编排 + 11 个阶段
-│   │   ├── schemas/               # Pydantic 数据契约
-│   │   ├── providers/             # OpenAI / ElevenLabs / DALL-E 封装
-│   │   └── db/                    # 数据库模型
-│   ├── tests/                     # 单元测试
-│   └── requirements.txt
-├── renderer/                      # Remotion 渲染器
-│   ├── src/
-│   │   ├── index.ts               # CLI 入口
-│   │   ├── compositions/          # Remotion 主合成
-│   │   ├── scenes/                # 确定性场景渲染器
-│   │   └── components/            # 角色 / 镜头 / 字幕
-│   └── package.json
-├── webapp/                        # Next.js 控制台
-│   ├── app/                       # 页面
-│   └── components/                # UI 组件
-├── workspace/                     # 每个任务的产物
-└── README.md
+│   │   ├── providers/        # LLM, TTS, Image, Search providers
+│   │   │   ├── groq_llm.py   # ← Groq provider (FREE!)
+│   │   │   ├── cursor_agent.py  # ← Cursor SDK provider
+│   │   │   ├── openai_llm.py
+│   │   │   └── mock_llm.py
+│   │   ├── pipeline/         # 11-stage video generation pipeline
+│   │   │   └── stages/       # s1_research → s11_short
+│   │   ├── api/              # FastAPI routes
+│   │   └── main.py
+│   ├── .venv/                # Python virtual environment
+│   ├── requirements.txt
+│   └── test_groq_provider.py
+├── renderer/                  # Node.js Remotion video renderer
+├── webapp/                    # Next.js frontend
+├── workspace/                 # Job outputs (gitignored)
+├── .env                       # API keys
+└── start.bat                  # One-click launcher
 ```
 
 ---
 
-## 6. 下一步（暂未实现）
+## 🔑 Environment Variables
 
-为保持 MVP 简洁，以下功能标记为"下一阶段"，架构已为之预留接口：
-
-- 用户登录 / 多账号
-- Celery + Redis 异步队列（当前是同步执行）
-- S3 / OSS 云存储（当前是本地文件系统）
-- 智能 Shorts 选段（当前是简单地切中段）
-- 缩略图自动生成
-- 多家 LLM / TTS / 图像厂商（已抽象，但只接了 OpenAI / ElevenLabs）
-- 自动发布到 YouTube
-- 事实核查 + 来源可视化
-
-如果你想优先实现其中某一项，告诉我，我会接着写。
-
----
-
-## 7. 研究情报引擎 (Research Intelligence Engine)
-
-研究阶段（Stage 1）现在使用 **研究情报引擎**。它将一个主题转换为一个结构化、可追溯、带不确定性建模的研究包，而不是简单的"搜索 + 摘要"。
-
-### 7.1 13 步流水线
-
-```
-question_decomposition
-        ↓
-search_sources (DuckDuckGo 免费)
-        ↓
-fetch_and_score_sources
-        ↓
-deduplicate_sources
-        ↓
-extract_claims (LLM)
-        ↓
-build_claim_source_graph
-        ↓
-detect_contradictions (LLM)
-        ↓
-model_uncertainty
-        ↓
-build_timeline
-        ↓
-extract_visual_opportunities (LLM)
-        ↓
-extract_story_opportunities (LLM)
-        ↓
-synthesize (LLM)
-        ↓
-score_quality
-```
-
-### 7.2 研究包结构 (ResearchPackage)
-
-每个研究都生成一个 `workspace/{job_id}/research_package.json`，包含：
-
-| 章节 | 说明 |
-|------|------|
-| `metadata` | 主题、版本、耗时、质量分数 |
-| `research_questions` | 10–15 个研究问题（按重要性评分） |
-| `sources` | 每个来源带 TIER1-4 评级、独立性评分、内容哈希 |
-| `claims` | 提取的事实性声明，附置信度、确定性等级 |
-| `claim_source_links` | 声明 ↔ 来源 多对多关系（supports/contradicts/qualifies） |
-| `contradictions` | 矛盾检测结果（未解决 / 部分解决 / 已解决） |
-| `research_gaps` | 显式记录的证据空白 |
-| `timeline` | 时间线事件（保留 BCE/CE 与近似性） |
-| `geography` | 地理站点（含经纬度可选） |
-| `quantitative_facts` | 定量事实（保留 min/max/approximate/uncertainty） |
-| `visual_opportunities` | 视觉化机会（character_action / environment / artifact / map 等） |
-| `story_opportunities` | 故事钩子、反直觉发现、情感节拍 |
-| `synthesis` | 综合分析：已知、推断、未知 |
-| `quality_score` | 9 维度质量评分 + 总体评分 |
-
-### 7.3 来源等级
-
-- **TIER1**：Nature / Science / PNAS / 同行评议论文 / 高校研究库 / 博物馆研究馆藏
-- **TIER2**：Smithsonian / 主要博物馆 / 大学 / 知名科学刊物
-- **TIER3**：参考书 / 百科 / Wikipedia / 教育资源
-- **TIER4**：博客 / 商业站点 / 论坛（**仅用作发现线索，不作权威证据**）
-
-### 7.4 确定性等级
-
-每个 Claim 都有 `certainty_level` 字段：
-
-- `STRONG_EVIDENCE`（2+ 高质量来源，confidence ≥ 0.85）
-- `PLAUSIBLE_INTERPRETATION`（单一来源或一般置信度）
-- `SPECULATION`（confidence 0.3–0.6）
-- `UNKNOWN`（confidence < 0.3 或无来源）
-
-### 7.5 研究包 API
+Xem file `.env` để biết tất cả biến môi trường. Các biến quan trọng:
 
 ```bash
-# 获取完整研究包
-GET /research/{job_id}/package
+# LLM Providers
+GROQ_API_KEY=...              # Miễn phí, đã có
+OPENAI_API_KEY=...            # Trả phí
+CURSOR_API_KEY=...            # Dùng Modal của bạn
+GEMINI_API_KEY_1=...          # Vision API
+ELEVENLABS_API_KEY=...        # Voice generation
 
-# 分页获取来源（可按 tier 过滤）
-GET /research/{job_id}/sources?tier=TIER1&page=1
+# Video defaults
+DEFAULT_FPS=30
+DEFAULT_WIDTH=1920
+DEFAULT_HEIGHT=1080
+TARGET_DURATION_SEC=120
 
-# 分页获取 Claim（可按 claim_type / certainty 过滤）
-GET /research/{job_id}/claims?certainty=SPECULATION
-
-# 获取矛盾列表
-GET /research/{job_id}/contradictions
-
-# 获取质量评分
-GET /research/{job_id}/quality
-
-# 人工审核：批准 / 拒绝来源
-POST /research/{job_id}/review/sources/{source_id}
-Body: {"approved": false, "notes": "..."}
-
-# 人工审核：标记 Claim 为不确定
-POST /research/{job_id}/review/claims/{claim_id}
-Body: {"approved": false, "notes": "..."}
-```
-
-### 7.6 缓存与可重试性
-
-研究是昂贵的。每个步骤都通过内容哈希缓存到 `workspace/{job_id}/research_cache/`：
-
-- `search:{query_hash}` → 搜索结果
-- `fetch:{url_hash}` → 抓取的网页内容
-- `claims:{content_hash}` → 从来源提取的声明
-
-7 天 TTL。失败重试不会重复已成功的工作。
-
-### 7.7 旧版兼容
-
-为保证下游阶段（thesis, script, storyboard）继续工作，`s1_research` 阶段同时写：
-
-- `workspace/{job_id}/research_package.json` — 完整的丰富包（新）
-- `workspace/{job_id}/research.json` — 旧版精简格式（向下兼容）
-
-### 7.8 研究质量阈值
-
-如果 `quality_score.overall_score < research_quality_min_threshold` (默认 0.6)，系统会发出 WARNING 但不会失败，以允许人工审核介入。可通过环境变量调整：
-
-```
-RESEARCH_QUALITY_MIN_THRESHOLD=0.7
+# Publishing credentials (P16) — optional, để trống nếu chưa muốn publish
+YOUTUBE_API_KEY=...           # YouTube Data API v3 key
+YOUTUBE_CLIENT_ID=...         # OAuth 2.0
+YOUTUBE_CLIENT_SECRET=...     # OAuth 2.0
+YOUTUBE_REFRESH_TOKEN=...     # OAuth 2.0 refresh
+TIKTOK_CLIENT_KEY=...         # TikTok for Developers
+TIKTOK_CLIENT_SECRET=...      # TikTok for Developers
+TIKTOK_ACCESS_TOKEN=...       # TikTok Login Kit
+FACEBOOK_ACCESS_TOKEN=...     # Facebook Graph API
+FACEBOOK_PAGE_ID=...          # Facebook Page ID
+FACEBOOK_INSTAGRAM_ID=...     # Optional, for cross-post
 ```
 
 ---
 
-## 7. 常见问题
+## 💡 Tại sao Groq lại là lựa chọn tốt nhất?
 
-**Q：报错 `ffmpeg not found`？**
-A：你没把 FFmpeg 的 bin 目录加入 PATH，或者加入后没重启 PowerShell。
+1. **MIỄN PHÍ** với giới hạn rất cao (~30 req/phút)
+2. **CỰC NHANH** (~500 tokens/sec)
+3. **OpenAI-compatible API** - dùng chung SDK
+4. **Model chất lượng cao** - `groq/compound-mini`, `qwen/qwen3.8-27b`
 
-**Q：报错 `OPENAI_API_KEY not set`？**
-A：正常 —— 系统会自动进入 mock 模式跑通演示。
-
-**Q：渲染出来的视频没有声音？**
-A：在 mock 模式下会用 Google TTS 兜底，可能没有时间戳对齐字幕。配置 ElevenLabs 后会正常。
-
-**Q：可以商用吗？**
-A：本项目代码是 MIT 协议，但生成的视频中包含的图片 / 音频仍受对应厂商条款约束，请自行检查。
+Groq được ưu tiên **trước** OpenAI trong pipeline. Khi cần task phức tạp (research đa bước, viết code), Cursor SDK sẽ được dùng.
 
 ---
 
-## 8. 反馈
+## 🐛 Troubleshooting
 
-如果你在使用过程中遇到任何问题（安装失败、运行报错、效果不理想），把错误信息和你的操作步骤告诉我，我会持续迭代。
+### Lỗi "python not recognized"
+- Cài lại Python và tick "Add Python to PATH"
+- Hoặc dùng đường dẫn đầy đủ: `C:\Users\Administrator\AppData\Local\Programs\Python\Python311\python.exe`
 
-祝玩得开心。
+### Lỗi "ffmpeg not recognized"
+- Thêm vào PATH: `C:\ffmpeg\ffmpeg-9.0.1-essentials_build\bin`
+- Hoặc restart máy sau khi cài
+
+### Lỗi CORS_ORIGINS
+- pydantic-settings 2.15 yêu cầu JSON list
+- Fix đã có trong `app/core/config.py` (dùng `NoDecode`)
+
+### Model not found (Groq)
+- Groq đã ngừng hỗ trợ `llama-3.1-*`, dùng `groq/compound-mini` hoặc `qwen/qwen3.8-27b`
 
 ---
 
-## 9. 当前状态（PROMPT 7 — 2026-09-15）
+## 📞 Support
 
-**动画引擎已完成。** PROMPT 7 构建了完整的确定性动画运行时：
-
-- 485 Python tests passed / 0 failed / 0 errors（+79 新测试）
-- 71 Vitest tests passed（renderer/）
-- 真实的 Remotion 动画渲染产出 7.9 KB MP4（640×360 h264，6.0s）
-  - 角色进入 → 行走 → 停止 → 持枪互动
-  - 摄像机平移 + 缩放（ease_in_out）
-- TypeScript 全量编译通过
-- 项目审计 PASS
-- 动画子系统：AnimationPlan 合同、AnimationCompiler、动作映射、插值、角色/道具/摄像机动画、骨架锚点交互
-- 已解决技术债务：L-019、L-021、C-004、C-005、C-036、C-010 partial
-
-**NOT 开始 PROMPT 8（TTS/语音）。** PROMPT 7 要求首先证明动画运行时是确定性的、资产驱动的、帧可寻址的、渲染机兼容的，并能产出实际动画 MP4。该质量门已通过。
-
-详细报告：`plans/prompt_7_FINAL_REPORT.md`（待创建）
-测试状态：`docs/TEST_STATUS.md`
-
-## 10. 停止条件
-
-- 不要自动开始 PROMPT 8
-- 不要添加 TTS
-- 不要添加字幕
-- 不要添加编辑功能
-- 首先证明动画运行时是确定性的、资产驱动的、帧可寻址的、渲染机兼容的，并能产出实际动画 MP4
-
-完整系统说明：`docs/PROJECT_CONTEXT.md`
+- Docs: Xem `docs/` folder
+- Issues: Tạo issue trên GitHub
+- Cursor API: https://cursor.com/dashboard/integrations
+- Groq Console: https://console.groq.com

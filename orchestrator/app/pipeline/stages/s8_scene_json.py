@@ -89,7 +89,7 @@ Return ONLY the JSON object, no commentary.
 
 class SceneJsonStage(Stage):
     name = "scene_json"
-    label = "Scene Definition"
+    label = "Scene JSON"
 
     def run(self, ctx: StageContext) -> dict:
         out = stage_path(ctx.job_id, "scene_definition")

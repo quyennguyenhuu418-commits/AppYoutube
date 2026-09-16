@@ -18,7 +18,7 @@ class ScriptStage(Stage):
     """
 
     name = "script"
-    label = "Script"
+    label = "Kịch bản"
 
     def run(self, ctx: StageContext) -> dict:
         out = stage_path(ctx.job_id, "script")

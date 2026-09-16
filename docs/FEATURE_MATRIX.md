@@ -78,6 +78,38 @@ Status values: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `PLANNED`.
 | Character inspection UI | — | `/jobs/[id]/characters/page.tsx` | NONE | **IMPLEMENTED** | none |
 | Character cache (content-addressed) | `character/cache.py` | — | `test_character_system.py` | **IMPLEMENTED** | **VERIFIED** |
 | SceneDefinition actor bridge | `engine.py` | — | `test_character_system.py` | **IMPLEMENTED** | **VERIFIED** |
+| Character Knowledge Reference Specification | `character/reference_schema.py` | — | `test_character_reference_system.py` | **IMPLEMENTED** | **VERIFIED (L-U4, 56 tests)** |
+| Character Knowledge Adapter (thin L-U3 consumer) | `character/knowledge_adapter.py` | — | `test_character_reference_system.py` | **IMPLEMENTED** | **VERIFIED (L-U4)** |
+| Identity vs Scene State separation | `character/reference_schema.py` | — | `test_character_reference_system.py` | **IMPLEMENTED** | **VERIFIED (L-U4)** |
+| Character Reference backward compatibility | `character/engine.py` | — | `test_character_system.py` + `test_character_reference_system.py` | **IMPLEMENTED** | **VERIFIED (L-U4, all 103 existing + 56 new)** |
+| **Prompt Compiler V2 (canonical, provider-neutral)** | `prompt/compiler.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5, 86 tests)** |
+| **Canonical Prompt IR (structured, NOT raw string)** | `prompt/schemas.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5)** |
+| **KnowledgePromptAdapter (thin L-U3 consumer)** | `prompt/adapters.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5)** |
+| **PromptValidator (deterministic, no LLM)** | `prompt/validator.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5)** |
+| **ProviderPromptAdapter boundary** | `prompt/provider_adapter.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5)** |
+| **GoogleFlowPromptAdapter reference impl** | `prompt/provider_adapter.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5, reference only)** |
+| **Identity ≠ Scene State preservation in prompts** | `prompt/compiler.py` | — | `test_prompt_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U5, character consistency regression)** |
+| **Prompt Compiler backward compatibility** | `prompt/compiler.py` | — | `test_prompt_compiler.py` + existing tests | **IMPLEMENTED** | **VERIFIED (L-U5, all 1122 existing tests pass)** |
+| **Camera + Motion + Sound Compiler (semantic, deterministic, provider-neutral)** | `prompt/cms_compiler.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6, 106 tests)** |
+| **CameraBlockExt / MotionBlockExt / SoundBlockExt (semantic extension)** | `prompt/schemas.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **SubjectMotionSpec (semantic, not animation implementation)** | `prompt/schemas.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **SoundLayersSpec (semantic, not audio mix)** | `prompt/schemas.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **KnowledgeCameraMotionSoundAdapter (thin L-U3 consumer)** | `prompt/knowledge_adapter.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **CameraMotionSoundValidator (deterministic, no LLM)** | `prompt/cms_validator.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **Three distinct concepts (camera movement / subject motion / animation pattern)** | `prompt/cms_compiler.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6, identity ≠ scene state preserved)** |
+| **Sound intent ≠ Audio file ≠ Audio mix** | `prompt/cms_compiler.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **Timing authority not duplicated (NarrationTimeline remains authoritative)** | `prompt/cms_compiler.py` | — | `test_camera_motion_sound_compiler.py` | **IMPLEMENTED** | **VERIFIED (L-U6)** |
+| **CMS backward compatibility (L-U5 contracts unchanged)** | `prompt/schemas.py` | — | `test_camera_motion_sound_compiler.py` + existing tests | **IMPLEMENTED** | **VERIFIED (L-U6, all 1208 existing tests pass)** |
+| **Quality Engine (L-U7, deterministic, no LLM)** | `quality/engine.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7, 78 tests)** |
+| **QualityValidationResult (canonical, frozen)** | `quality/schemas.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **QualityValidationContext (immutable bundle of upstream contracts)** | `quality/schemas.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **ValidationPolicy (STRICT/STANDARD/LENIENT)** | `quality/schemas.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **15 dimension validators** | `quality/validators.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **Identity invariant enforcement (L-U4)** | `quality/validators.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7, identity ≠ scene state)** |
+| **Three concepts preserved (camera ≠ subject motion ≠ animation)** | `quality/validators.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **Provider-neutral / Renderer-neutral / No-LLM validator core** | `quality/*` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **Deterministic fingerprint + reproducible validation_id** | `quality/schemas.py` | — | `test_hybrid_quality_validation.py` | **IMPLEMENTED** | **VERIFIED (L-U7)** |
+| **Quality Engine backward compatibility (L-U5/L-U6 unchanged)** | `quality/*` | — | all prior tests | **IMPLEMENTED** | **VERIFIED (L-U7, all 1314 existing tests pass)** |
 | **Asset System** | `assets/engine.py` | `/jobs/[id]/assets/page.tsx` | `test_asset_system.py` | **IMPLEMENTED** | **VERIFIED** (105 tests) |
 | Asset abstraction (Asset/Reference/Package/Registry/Resolver/Quality/Lifecycle) | `schemas/asset.py`, `assets/engine.py` | — | `test_asset_system.py` | **IMPLEMENTED** | **VERIFIED** |
 | Environment schema (EnvironmentAsset/Instance + 6 profiles) | `schemas/asset.py` | — | `test_asset_system.py` | **IMPLEMENTED** | **VERIFIED** |
@@ -144,9 +176,15 @@ Status values: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `PLANNED`.
 | feature | backend | frontend | tests | status | known limitation |
 |---|---|---|---|---|---|
 | Render MP4 | `s10_render.py:49` (subprocess) | `<VideoPlayer>` | NONE | IMPLEMENTED | UNVERIFIED; 15-min timeout |
-| Vertical Short | `s11_short.py:88` (FFmpeg) | indirect | NONE | IMPLEMENTED | UNVERIFIED |
-| **Auto-thumbnail** | — | — | — | MISSING | future |
-| **YouTube publishing** | — | — | — | MISSING | future |
+| Vertical Shorts (9:16) | `shorts/stage.py` + `shorts/compiler.py` | `/jobs/[id]/shorts` | **+23 tests** | **IMPLEMENTED** | real face detection deferred |
+| Smart scene selection | `shorts/compiler.py` (scoring) | — | **PASS** | **IMPLEMENTED** | — |
+| Caption repositioning (vertical) | `shorts/vertical_caption_adapter.py` | — | **PASS** | **IMPLEMENTED** | text overlay in Remotion deferred |
+| Thumbnail generation | `thumbnail/stage.py` + `thumbnail/compiler.py` | `/jobs/[id]/thumbnails` | **+15 tests** | **IMPLEMENTED** | text overlay in FFmpeg deferred |
+| Auto-thumbnail | `ThumbnailGenerator` (FFmpeg) | thumbnail grid | **PASS** | **IMPLEMENTED** | title overlay via Remotion deferred |
+| Publishing metadata (3 platforms) | `publishing/stage.py` + generators | `/jobs/[id]/publishing` | **+29 tests** | **IMPLEMENTED** | requires OAuth credentials |
+| **YouTube publishing** | `publishing/platform_client.py` | — | **+16 tests** | **STUB** | real HTTP needs httpx |
+| **TikTok publishing** | `publishing/platform_client.py` | — | — | **STUB** | real HTTP needs httpx |
+| **Facebook publishing** | `publishing/platform_client.py` | — | — | **STUB** | real HTTP needs httpx |
 | **Analytics** | — | — | — | MISSING | future |
 
 ## Cross-cutting

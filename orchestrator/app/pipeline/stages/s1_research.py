@@ -36,7 +36,7 @@ log = get_logger(__name__)
 
 class ResearchStage(Stage):
     name = "research"
-    label = "Research"
+    label = "Nghiên cứu"
 
     def run(self, ctx: StageContext) -> dict:
         """

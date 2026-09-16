@@ -101,10 +101,21 @@ orchestrator/
 │   ├── storyboard/                (NEW, PROMPT 4)
 │   │   ├── engine.py              ~1900 lines — Storyboard Intelligence Engine (visual decomposition, beats, camera, motion, transition, continuity, evidence, quality)
 │   │   └── cache.py               ~110 lines — content-addressed cache (segment/mode/assets/continuity/camera/package)
-│   ├── character/                 (NEW, PROMPT 5)
+│   ├── character/                 (PROMPT 5 + L-U4 extensions)
 │   │   ├── engine.py              ~900 lines — CharacterSystemEngine (resolution, deduplication, versioning, quality scoring)
 │   │   ├── cache.py              ~120 lines — content-addressed cache (character_package/definition/pose/expression/wardrobe/quality)
-│   │   └── svg_generator.py       ~600 lines — deterministic SVG (8 poses, 11 expressions, validation)
+│   │   ├── svg_generator.py       ~600 lines — deterministic SVG (8 poses, 11 expressions, validation)
+│   │   ├── reference_schema.py    (L-U4) — CharacterReferenceSpecification + IdentityBearing/SceneVariable properties
+│   │   └── knowledge_adapter.py   (L-U4) — KnowledgeCharacterAdapter (thin L-U3 consumer)
+│   ├── prompt/                    (L-U5 + L-U6) — Prompt Compiler V2 + Camera + Motion + Sound Compiler
+│   │   ├── schemas.py             ~1100 lines — CanonicalPromptIR, Request, Result, all blocks, enums (L-U5 + L-U6 extensions)
+│   │   ├── adapters.py            ~350 lines — KnowledgePromptAdapter (thin L-U3 consumer, L-U5)
+│   │   ├── compiler.py            ~550 lines — PromptCompiler core (deterministic, provider-neutral, no LLM, L-U5)
+│   │   ├── validator.py           ~250 lines — PromptValidator (deterministic, structural, no LLM, L-U5)
+│   │   ├── provider_adapter.py    ~250 lines — abstract ProviderPromptAdapter + reference GoogleFlowPromptAdapter (L-U5)
+│   │   ├── knowledge_adapter.py   (NEW, L-U6) — KnowledgeCameraMotionSoundAdapter (thin L-U3 consumer)
+│   │   ├── cms_compiler.py        (NEW, L-U6) — CameraMotionSoundCompiler core (semantic, deterministic, no LLM)
+│   │   └── cms_validator.py       (NEW, L-U6) — CameraMotionSoundValidator (deterministic, structural, no LLM)
 │   ├── assets/                   (NEW, PROMPT 6) — Environment/Prop/Asset Unified Intelligence
 │   │   ├── engine.py             ~1000 lines — AssetSystemEngine + AssetResolver (single canonical resolution path)
 │   │   ├── cache.py              ~330 lines — content-addressed cache (SHA-256/16-char fingerprint)
@@ -132,6 +143,9 @@ orchestrator/
     ├── test_story_engine.py      ~300 lines — story + script schema + engine
     ├── test_storyboard_engine.py ~1100 lines — 62 tests for Storyboard Intelligence Engine
     ├── test_character_system.py  ~700 lines — 103 tests for Character System
+    ├── test_character_reference_system.py  (L-U4) — 56 tests (schema + adapter + golden fixture + consistency regression)
+    ├── test_prompt_compiler.py  (NEW, L-U5) — 86 tests (schema + deterministic + image/video + knowledge + provenance + fallback + identity + scene-variable + constraints + camera + motion + format + provider-neutrality + provider adapter + backward compat + architecture invariants + golden fixtures + security + fingerprint + consistency regression)
+    ├── test_camera_motion_sound_compiler.py  (NEW, L-U6) — 106 tests (schema + deterministic + vocabulary + knowledge + provenance + fallback + conflict + character consistency + storyboard + prompt integration + animation boundary + timing semantics + provider-neutrality + renderer-neutrality + security + golden fixtures A-N + fingerprint + backward compat + architecture + three-distinct-concepts + validator determinism)
     ├── test_asset_system.py      ~900 lines — 105 tests for Asset System
     └── test_pipeline_integration_65.py  ~600 lines (NEW, PROMPT 6.5) — 26 integration tests (vertical slice, character/env/prop flow, s6/s8, cache idempotency, HTTP API, failure paths, SVG security)
 ```

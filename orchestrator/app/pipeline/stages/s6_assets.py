@@ -59,7 +59,7 @@ _ENV_HINTS = {
 
 class AssetsStage(Stage):
     name = "assets"
-    label = "Visual Assets"
+    label = "Tài nguyên"
 
     def run(self, ctx: StageContext) -> dict:
         out_meta = stage_path(ctx.job_id, "assets")

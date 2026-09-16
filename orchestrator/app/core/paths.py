@@ -73,6 +73,12 @@ def shorts_dir(job_id: str) -> Path:
     return p
 
 
+def thumbnails_dir(job_id: str) -> Path:
+    p = job_dir(job_id) / "thumbnails"
+    p.mkdir(exist_ok=True)
+    return p
+
+
 # ---- JSON I/O helpers (atomic writes to avoid half-written files) ----
 
 def write_json(path: Path, data: Any) -> None:

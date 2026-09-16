@@ -23,6 +23,8 @@ from app.pipeline.stages.s8_scene_json import SceneJsonStage
 from app.pipeline.stages.s9_validate import ValidateStage
 from app.pipeline.stages.s10_render import RenderStage
 from app.pipeline.stages.s11_short import ShortsStage
+from app.publishing.stage import PublishingStage
+from app.thumbnail.stage import ThumbnailStage
 from app.schemas.job import JobDetail, StageInfo, StageStatus
 
 log = get_logger(__name__)
@@ -40,6 +42,8 @@ STAGES = [
     ValidateStage(),
     RenderStage(),
     ShortsStage(),
+    ThumbnailStage(),
+    PublishingStage(),
 ]
 
 

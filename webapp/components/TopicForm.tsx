@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
+import { vi } from "@/lib/i18n";
 
 const EXAMPLES = [
   "How Did Ancient Humans Survive Deadly Winters?",
@@ -27,7 +28,7 @@ export function TopicForm() {
       const job = await api.createJob(topic.trim());
       router.push(`/jobs/${job.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start job");
+      setError(err instanceof Error ? err.message : vi.errorStartJob);
       setBusy(false);
     }
   }
@@ -36,14 +37,14 @@ export function TopicForm() {
     <form onSubmit={submit} className="space-y-6">
       <div>
         <label htmlFor="topic" className="block text-sm font-medium text-slate-300 mb-2">
-          What should the documentary be about?
+          {vi.formLabel}
         </label>
         <textarea
           id="topic"
           rows={3}
           className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-lg
                      placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent"
-          placeholder="e.g. How Did Ancient Humans Survive Deadly Winters?"
+          placeholder={vi.formPlaceholder}
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           disabled={busy}
@@ -56,7 +57,7 @@ export function TopicForm() {
         className="w-full rounded-lg bg-accent px-6 py-3 text-lg font-semibold text-ink
                    hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
       >
-        {busy ? "Starting..." : "Generate Documentary"}
+        {busy ? vi.buttonStarting : vi.buttonGenerate}
       </button>
 
       {error && (
@@ -67,7 +68,7 @@ export function TopicForm() {
 
       <div>
         <div className="text-xs uppercase tracking-wider text-slate-500 mb-2">
-          Or try an example:
+          {vi.exampleLabel}
         </div>
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
