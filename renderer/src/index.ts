@@ -63,11 +63,60 @@ async function main() {
   const outputPath = path.join(jobDir, "final.mp4");
   const durationFrames = Math.round(sd.meta.target_duration_sec * sd.meta.fps);
 
-  console.log(`[renderer] bundling...`);
-  const bundleLocation = await bundle({
-    entryPoint: path.join(__dirname, "Root.tsx"),
-    outDir: path.join(__dirname, "..", ".remotion", "bundle"),
-  });
+        console.log(`[renderer] bundling...`);
+        const bundleLocation = await bundle({
+            entryPoint: path.join(__dirname, "Root.tsx"),
+            outDir: path.join(__dirname, "..", ".remotion", "bundle"),
+            webpackOverride: (config) => {
+                // Remotion renderMedia chạy trong Node.js (không phải browser)
+                // nên cần cho phép dùng Node built-ins như 'fs', 'path'.
+                // Fix "Reading from node:fs is not handled" bằng cách resolve
+                // cả 'node:fs' và 'fs' về cùng module.
+                const webpack = require("webpack");
+                config.plugins = config.plugins || [];
+                config.plugins.push(
+                    new webpack.NormalModuleReplacementPlugin(
+                        /^node:(.+)$/,
+                        (resource: any) => {
+                            resource.request = resource.request.replace(/^node:/, "");
+                        },
+                    ),
+                );
+                // Mark Node built-ins as not browser-only (allow resolve)
+                if (config.resolve) {
+                    config.resolve.fallback = {
+                        ...config.resolve.fallback,
+                        fs: false,
+                        path: false,
+                        os: false,
+                        crypto: false,
+                        stream: false,
+                        util: false,
+                        assert: false,
+                        url: false,
+                        zlib: false,
+                        buffer: false,
+                        events: false,
+                        child_process: false,
+                    };
+                }
+                return config;
+            },
+        });
+
+        // Copy backgrounds vào bundle/public/ để Remotion serve được
+        const bundlePublicDir = path.join(bundleLocation, "public");
+        fs.mkdirSync(bundlePublicDir, { recursive: true });
+        for (const env of sd.environments) {
+            if (!env.background_asset) continue;
+            const src = path.join(jobDir, env.background_asset);
+            if (fs.existsSync(src)) {
+                const dst = path.join(bundlePublicDir, env.background_asset);
+                fs.mkdirSync(path.dirname(dst), { recursive: true });
+                fs.copyFileSync(src, dst);
+                console.log(`[renderer] staged to bundle: ${env.background_asset}`);
+            }
+        }
 
   console.log(`[renderer] selecting composition...`);
   const comp = await selectComposition({
@@ -101,6 +150,16 @@ async function main() {
     pixelFormat: "yuv420p",
     crf: 23,
     concurrency: 1,
+    // Chromium headless args để tránh sandbox issues trên Windows
+    chromiumOptions: {
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+      disableWebSecurity: true,
+    },
   });
 
   console.log(`[renderer] done -> ${outputPath}`);

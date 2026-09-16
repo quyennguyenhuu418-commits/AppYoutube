@@ -94,6 +94,30 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"
     elevenlabs_model_id: str = "eleven_multilingual_v2"
 
+    # ----- Video Generation (FREE tier priority: kivest > veo > kling) -----
+    # Chọn provider chính: "multi" (default, fallback tự động) | "kivest" | "veo" | "kling"
+    video_provider: str = "multi"
+    # Thứ tự fallback khi dùng multi (CSV): "kivest,veo,kling"
+    video_provider_priority: str = "kivest,veo,kling"
+    # Bật/tắt stage generate B-roll video (mặc định OFF để giữ tương thích)
+    video_assets_enabled: bool = False
+    video_assets_duration_sec: int = 5         # 5 hoặc 8 (Veo/Kling)
+    video_assets_aspect_ratio: str = "16:9"    # "16:9" | "9:16" | "1:1"
+    video_assets_quality: str = "draft"        # "draft" (cheap) | "standard" | "high"
+    # Kivest settings (https://ai.ezif.in/docs)
+    kivest_api_key: str = ""
+    kivest_base_url: str = "https://ai.ezif.in"
+    kivest_model: str = ""               # Để trống → tự chọn theo quality
+    # Veo 3.1 settings (Google AI Studio - https://aistudio.google.com/apikey)
+    veo_model: str = ""                   # Để trống → dùng veo-3.1-fast-generate-preview (draft) / veo-3.1-generate-001 (high)
+    # Kling settings (https://klingai.com)
+    # Mới: dùng 1 API key đơn lẻ (Bearer token)
+    # Cũ: dùng AK/SK pair (vẫn hỗ trợ, sẽ tự nối thành "ak-sk")
+    kling_api_key: str = ""
+    kling_access_key: str = ""
+    kling_secret_key: str = ""
+    kling_model: str = ""                 # Để trống → dùng kling-v3-std
+
     # ----- Renderer -----
     renderer_dir: Path = Field(default=Path("./renderer"))
     renderer_entry: str = "npx tsx src/index.ts"
@@ -178,6 +202,22 @@ class Settings(BaseSettings):
     @property
     def has_gemini(self) -> bool:
         return bool(self.gemini_api_keys)
+
+    @property
+    def has_kivest(self) -> bool:
+        return bool(self.kivest_api_key.strip())
+
+    @property
+    def has_kling(self) -> bool:
+        """True nếu có ít nhất 1 trong 2: API key đơn lẻ HOẶC AK+SK pair."""
+        return bool(self.kling_api_key.strip()) or (
+            bool(self.kling_access_key.strip()) and bool(self.kling_secret_key.strip())
+        )
+
+    @property
+    def has_any_video_provider(self) -> bool:
+        """True nếu có ít nhất 1 video provider khả dụng."""
+        return self.has_kivest or self.has_gemini or self.has_kling
 
 
 @lru_cache(maxsize=1)

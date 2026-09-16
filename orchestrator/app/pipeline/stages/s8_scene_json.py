@@ -138,7 +138,27 @@ class SceneJsonStage(Stage):
             except Exception as exc:
                 log.warning("[%s] asset_system_package read failed: %s", self.name, exc)
 
-        provider = get_llm_provider()
+        # S8 SceneJson cần input lớn (script + storyboard + words).
+        # Groq gpt-oss-120b có TPM limit 8000, cần input <6000 tokens.
+        # Truncate aggressively để fit.
+        provider = get_llm_provider()  # Groq default
+
+        # Truncate storyboard mạnh hơn (thường là phần lớn nhất)
+        # 1 token ≈ 3-4 chars cho English text. Mục tiêu: input <5000 tokens
+        if len(storyboard_text) > 2500:
+            log.info("[%s] truncating storyboard_text %d -> 2500 chars", self.name, len(storyboard_text))
+            storyboard_text = storyboard_text[:2500] + "\n[... truncated]"
+        if len(script_text) > 2000:
+            log.info("[%s] truncating script_text %d -> 2000 chars", self.name, len(script_text))
+            script_text = script_text[:2000] + "\n[... truncated]"
+        # Chỉ giữ 100 word timestamps
+        words_data = ctx.state.get("narration", {}).get("words") or read_json(
+            stage_path(ctx.job_id, "narration.words"))
+        if isinstance(words_data, list) and len(words_data) > 100:
+            log.info("[%s] using first 100 of %d word timestamps", self.name, len(words_data))
+            words_data = words_data[:100]
+        words_text = json.dumps(words_data)
+
         req = LLMRequest(
             messages=[
                 LLMMessage(role="system", content=SYSTEM_JSON_AGENT),
@@ -148,11 +168,81 @@ class SceneJsonStage(Stage):
             ],
             json_mode=True,
             model_hint="large",
-            max_tokens=8192,
+            max_tokens=3000,
         )
         resp = provider.complete(req)
         assert resp.parsed_json is not None
         data = resp.parsed_json
+
+        # Normalize mood enum: LLM thường trả về mood không match enum
+        # Map common synonyms → valid values
+        MOOD_MAP = {
+            "intimate": "warm",
+            "cozy": "warm",
+            "calm": "calm",
+            "peaceful": "calm",
+            "serene": "calm",
+            "tense": "tense",
+            "anxious": "tense",
+            "dramatic": "tense",
+            "triumphant": "triumphant",
+            "victorious": "triumphant",
+            "heroic": "triumphant",
+            "mysterious": "mysterious",
+            "dark": "mysterious",
+            "ominous": "mysterious",
+            "warm": "warm",
+            "happy": "warm",
+            "friendly": "warm",
+            "informative": "calm",
+            "educational": "calm",
+            "intro": "calm",
+            "neutral": "calm",
+            "title": "calm",
+            "outro": "warm",
+        }
+        for env in data.get("environments", []):
+            mood = env.get("mood", "calm")
+            env["mood"] = MOOD_MAP.get(mood.lower(), "calm")
+
+        # Normalize music: LLM có thể trả string thay vì MusicCue dict
+        for scene in data.get("scenes", []):
+            music = scene.get("music")
+            if music is not None and isinstance(music, str):
+                # Convert "path/to/file.mp3" → MusicCue dict
+                # Extract name từ path
+                name = music.split("/")[-1].replace(".mp3", "").replace(".wav", "").replace("-", "_") or "ambient_calm"
+                scene["music"] = {"name": name, "gain_db": -18.0, "fade_in_sec": 0.5, "fade_out_sec": 1.0}
+            elif music is None:
+                pass  # music is optional
+
+        # Normalize word timestamps: LLM có thể đặt từ cuối vượt quá scene end_sec
+        # Clamp words vào trong [start_sec, end_sec]
+        for scene in data.get("scenes", []):
+            s_sec = scene.get("start_sec", 0)
+            e_sec = scene.get("end_sec", 0)
+            for w in scene.get("narration_words", []):
+                # Nếu có end_sec > e_sec → clamp vào e_sec
+                if "end_sec" in w and w["end_sec"] > e_sec:
+                    w["end_sec"] = e_sec
+                if "start_sec" in w and w["start_sec"] > e_sec:
+                    w["start_sec"] = max(s_sec, e_sec - 0.1)
+                if "start_sec" in w and "end_sec" in w and w["start_sec"] > w["end_sec"]:
+                    w["start_sec"] = max(s_sec, w["end_sec"] - 0.1)
+
+        # Normalize target_duration_sec: khớp với tổng scene duration (cho phép ±20%)
+        # Nếu LLM tạo scene quá ngắn, điều chỉnh target_duration cho phù hợp
+        if data.get("scenes"):
+            last_scene = data["scenes"][-1]
+            actual_duration = last_scene.get("end_sec", 0)
+            target = data.get("meta", {}).get("target_duration_sec", 120)
+            if abs(actual_duration - target) > target * 0.20:
+                log.warning(
+                    "[%s] total duration %.1fs differs from target %.1fs; adjusting target",
+                    self.name, actual_duration, target,
+                )
+                data["meta"]["target_duration_sec"] = actual_duration
+
         write_json(out, data)
         log.info("[%s] emitted %d scenes", self.name, len(data.get("scenes", [])))
         return data

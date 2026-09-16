@@ -59,7 +59,7 @@ class KivestVideoProvider(VideoProvider):
         if not api_key:
             raise RuntimeError(
                 "KIVEST_API_KEY is not set; KivestVideoProvider cannot be used. "
-                "Đăng ký miễn phí tại https://ai.ezif.in/docs"
+                "Sign up free at https://ai.ezif.in/docs"
             )
         self._api_key = api_key
         self._base_url = settings.kivest_base_url.rstrip("/")
@@ -155,12 +155,40 @@ class KivestVideoProvider(VideoProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
+        # Kivest có thể trả SSE theo mặc định → set stream=false để nhận JSON
+        if "stream" not in payload:
+            payload["stream"] = False
+
         with httpx.Client(timeout=30.0) as client:
             r = client.post(url, headers=headers, json=payload)
             r.raise_for_status()
-            data = r.json()
+            # Kivest đôi khi trả SSE thay vì JSON → parse thủ công
+            raw = r.text
+            content_type = r.headers.get("content-type", "")
+            if "text/event-stream" in content_type or raw.startswith("data:"):
+                log.debug("[Kivest] got SSE response, parsing last data chunk")
+                data = self._parse_sse_response(raw)
+            else:
+                data = r.json()
         log.debug("[Kivest] submit response: %s", json.dumps(data)[:200])
         return data
+
+    def _parse_sse_response(self, raw: str) -> dict:
+        """Parse Server-Sent Events: lấy chunk JSON cuối cùng (trước [DONE])."""
+        import json as _json
+        last_data = None
+        for line in raw.splitlines():
+            line = line.strip()
+            if line.startswith("data:") and line != "data: [DONE]":
+                payload = line[5:].strip()
+                if payload:
+                    try:
+                        last_data = _json.loads(payload)
+                    except _json.JSONDecodeError:
+                        continue
+        if last_data is None:
+            raise RuntimeError(f"Kivest SSE response contained no valid JSON chunks: {raw[:200]}")
+        return last_data
 
     def _poll_for_url(self, task_id: str, model: str, max_wait: int = 240) -> str | None:
         """Poll cho tới khi task xong. Nếu response sync đã có URL thì trả về luôn."""

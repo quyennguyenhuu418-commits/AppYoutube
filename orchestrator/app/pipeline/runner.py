@@ -18,6 +18,7 @@ from app.pipeline.stages.s3_titles import TitlesStage
 from app.pipeline.stages.s4_script import ScriptStage
 from app.pipeline.stages.s5_storyboard import StoryboardStage
 from app.pipeline.stages.s6_assets import AssetsStage
+from app.pipeline.stages.s6b_video_assets import VideoAssetsStage
 from app.pipeline.stages.s7_narration import NarrationStage
 from app.pipeline.stages.s8_scene_json import SceneJsonStage
 from app.pipeline.stages.s9_validate import ValidateStage
@@ -37,6 +38,7 @@ STAGES = [
     ScriptStage(),
     StoryboardStage(),
     AssetsStage(),
+    VideoAssetsStage(),       # Optional: AI B-roll video (no-op nếu không bật)
     NarrationStage(),
     SceneJsonStage(),
     ValidateStage(),

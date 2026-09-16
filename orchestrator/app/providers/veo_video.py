@@ -64,13 +64,14 @@ class VeoVideoProvider(VideoProvider):
     DEFAULT_TIMEOUT_SEC = 600.0    # Veo 3.1 có thể mất 3-6 phút
 
     def __init__(self) -> None:
-        api_key = settings.gemini_api_key  # Dùng chung Gemini API key
-        if not api_key:
+        # Dùng first available Gemini key (xoay vòng trong list nếu có nhiều key)
+        api_keys = settings.gemini_api_keys
+        if not api_keys:
             raise RuntimeError(
                 "GEMINI_API_KEY is not set; VeoVideoProvider cannot be used. "
-                "Lấy key miễn phí tại https://aistudio.google.com/apikey"
+                "Get a free key at https://aistudio.google.com/apikey"
             )
-        self._api_key = api_key
+        self._api_key = api_keys[0]
         self._base_url = "https://generativelanguage.googleapis.com/v1beta"
 
     # ------------------------------------------------------------------

@@ -7,7 +7,7 @@ character animation và motion. Hỗ trợ cả text-to-video và image-to-video
 FREE TIER (Sep 2026):
   - 66 credits/tháng (~2-3 video 5s) — không reset daily
   - Free tier CẤM sử dụng thương mại (cần paid plan để monetize)
-  - API: https://api.klingai.com (cần JWT token)
+  - API: https://api.klingai.com (Bearer token authentication)
 
 PRICING (tham khảo):
   - Kling 3.0 std 5s:  ~$0.35/video (no audio)
@@ -15,6 +15,12 @@ PRICING (tham khảo):
   - Kling 2.6 HD 5s:   ~$0.28/video (with audio)
 
 Docs: https://docs.klingai.com/
+
+Authentication:
+  - API v1 (mới): dùng Bearer token với API key đơn lẻ (KLING_API_KEY env)
+  - API v1 (cũ):  JWT với AK/SK pair (KLING_ACCESS_KEY + KLING_SECRET_KEY)
+  - Code này dùng Bearer token (mới). Nếu bạn có AK/SK, nối thành 1 key:
+    f"{ak}-{sk}" hoặc tạo JWT thủ công theo docs.
 
 Usage:
     >>> provider = KlingVideoProvider()
@@ -61,15 +67,21 @@ class KlingVideoProvider(VideoProvider):
     DEFAULT_TIMEOUT_SEC = 600.0
 
     def __init__(self) -> None:
-        ak = settings.kling_access_key
-        sk = settings.kling_secret_key
-        if not ak or not sk:
+        # Try single API key first (mới). Fallback: kết hợp AK-SK thành 1 key.
+        api_key = settings.kling_api_key.strip()
+        if not api_key:
+            ak = settings.kling_access_key.strip()
+            sk = settings.kling_secret_key.strip()
+            if ak and sk:
+                # Nối AK-SK theo format phổ biến
+                api_key = f"{ak}-{sk}"
+                log.info("[Kling] constructed API key from AK/SK pair")
+        if not api_key:
             raise RuntimeError(
-                "KLING_ACCESS_KEY/SECRET_KEY not set; KlingVideoProvider cannot be used. "
-                "Đăng ký tại https://klingai.com"
+                "KLING_API_KEY (or KLING_ACCESS_KEY+SECRET) not set; KlingVideoProvider cannot be used. "
+                "Sign up at https://klingai.com"
             )
-        self._ak = ak
-        self._sk = sk
+        self._api_key = api_key
 
     # ------------------------------------------------------------------
     # Public API
@@ -109,29 +121,10 @@ class KlingVideoProvider(VideoProvider):
             return settings.kling_model
         return self.MODELS.get(quality, self.MODELS["standard"])
 
-    def _make_token(self) -> str:
-        """Kling API dùng JWT-style token (HS256) đơn giản với ak/sk."""
-        header = {"alg": "HS256", "typ": "JWT"}
-        now = int(time.time())
-        payload = {
-            "iss": self._ak,
-            "exp": now + 1800,           # 30 phút
-            "nbf": now - 5,
-        }
-
-        def b64url(d: dict) -> str:
-            return base64.urlsafe_b64encode(json.dumps(d, separators=(",", ":")).encode()).rstrip(b"=").decode()
-
-        header_b64 = b64url(header)
-        payload_b64 = b64url(payload)
-        signing_input = f"{header_b64}.{payload_b64}".encode()
-        sig = hmac.new(self._sk.encode(), signing_input, hashlib.sha256).digest()
-        sig_b64 = base64.urlsafe_b64encode(sig).rstrip(b"=").decode()
-        return f"{header_b64}.{payload_b64}.{sig_b64}"
-
     def _headers(self) -> dict:
+        """Bearer token authentication (API v1 mới)."""
         return {
-            "Authorization": f"Bearer {self._make_token()}",
+            "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
 
@@ -150,10 +143,19 @@ class KlingVideoProvider(VideoProvider):
             url = f"{self.BASE_URL}/v1/videos/image2video"
             payload["image"] = self._encode_image_b64(req.reference_image_path)
 
-        with httpx.Client(timeout=60.0) as client:
-            r = client.post(url, headers=self._headers(), json=payload)
-            r.raise_for_status()
-            data = r.json()
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                r = client.post(url, headers=self._headers(), json=payload)
+                r.raise_for_status()
+                data = r.json()
+        except httpx.HTTPStatusError as exc:
+            # Log body để debug khi 401/403
+            body = exc.response.text[:500]
+            log.error(
+                "[Kling] HTTP %d: %s | body: %s",
+                exc.response.status_code, url, body,
+            )
+            raise
 
         task_id = (data.get("data") or {}).get("task_id")
         if not task_id:

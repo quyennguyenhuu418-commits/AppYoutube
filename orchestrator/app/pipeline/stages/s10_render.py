@@ -87,9 +87,11 @@ class RenderStage(Stage):
             cmd = [*cmd_parts, ctx.job_id]
             cwd = settings.renderer_path
             log.info("[%s] running: %s (cwd=%s)", self.name, " ".join(cmd), cwd)
+            # Use shell=True để Windows tìm npx qua PATH
             try:
                 proc = subprocess.run(
                     cmd, cwd=str(cwd), check=True, capture_output=True, text=True, timeout=900,
+                    shell=True,  # Windows PATH lookup for npx
                 )
             except subprocess.CalledProcessError as exc:
                 log.error("[%s] renderer exited %d\nstdout: %s\nstderr: %s",

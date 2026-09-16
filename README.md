@@ -27,6 +27,7 @@ Hệ thống sản xuất video documentary bằng AI - **nhập chủ đề, xu
 - **P15 Multi-platform Publishing** - metadata cho YouTube + TikTok + Facebook
 - **P16 Real Platform API Clients** - credential-based YouTube/TikTok/Facebook clients
 - **Research Engine v16.5** - phát hiện mâu thuẫn, trích xuất địa điểm + số liệu
+- **P17 AI Video B-roll Generation** - multi-provider với fallback (Kivest/Veo 3.1/Kling)
 
 ---
 
@@ -170,13 +171,17 @@ cd scripts
 AppYoutube/
 ├── orchestrator/              # Python FastAPI backend
 │   ├── app/
-│   │   ├── providers/        # LLM, TTS, Image, Search providers
+│   │   ├── providers/        # LLM, TTS, Image, Search, **Video** providers
 │   │   │   ├── groq_llm.py   # ← Groq provider (MIỄN PHÍ!)
 │   │   │   ├── cursor_agent.py  # ← Cursor SDK provider
 │   │   │   ├── openai_llm.py
-│   │   │   └── mock_llm.py
-│   │   ├── pipeline/         # 13-stage video generation pipeline
-│   │   │   └── stages/       # s1_research → s13_publishing
+│   │   │   ├── mock_llm.py
+│   │   │   ├── kivest_video.py   # ← P17: Kivest AI (FREE Veo/Grok/Qwen)
+│   │   │   ├── veo_video.py      # ← P17: Google Veo 3.1
+│   │   │   ├── kling_video.py    # ← P17: Kling 3.0
+│   │   │   └── multi_video.py    # ← P17: Multi-provider với fallback
+│   │   ├── pipeline/         # 14-stage video generation pipeline
+│   │   │   └── stages/       # s1_research → s6b_video_assets → s13_publishing
 │   │   ├── shorts/           # P13: 9:16 short clips
 │   │   ├── thumbnail/        # P14: YouTube/Twitter thumbnails
 │   │   ├── publishing/       # P15+P16: multi-platform publishing
@@ -240,6 +245,97 @@ FACEBOOK_INSTAGRAM_ID=...     # Tùy chọn, để cross-post
 4. **Model chất lượng cao** - `groq/compound-mini`, `qwen/qwen3.8-27b`
 
 Groq được ưu tiên **trước** OpenAI trong pipeline. Khi cần task phức tạp (research đa bước, viết code), Cursor SDK sẽ được dùng.
+
+---
+
+## 🎬 AI Video Generation (P17 - B-roll footage) - Sep 2026
+
+**Tính năng mới**: Sinh video B-roll 5-8s cho mỗi environment bằng AI. Renderer sẽ ưu tiên `.mp4` và fallback về `.png` nếu không có.
+
+### Multi-provider với auto-fallback
+
+Pipeline tự động thử các provider theo thứ tự ưu tiên, fallback khi rate-limit:
+
+| # | Provider | Chi phí | Free quota | Chất lượng | Setup |
+|---|----------|---------|-----------|------------|-------|
+| 1 | **Kivest AI** | MIỄN PHÍ | 4 video/ngày | ⭐⭐⭐⭐⭐ | Cần `KIVEST_API_KEY` |
+| 2 | **Google Veo 3.1** | TRẢ PHÍ | Tier 1: 10/ngày | ⭐⭐⭐⭐⭐ | Dùng `GEMINI_API_KEY` |
+| 3 | **Kling 3.0** | MIỄN PHÍ* | 66 credits/tháng | ⭐⭐⭐⭐ | Cần `KLING_ACCESS_KEY/SECRET` |
+
+> *Kling free tier cấm thương mại. Dùng cho dev/demo, cần paid plan để monetize.
+
+### Kivest AI (Khuyến nghị — MIỄN PHÍ)
+
+Kivest cung cấp OpenAI-compatible API cho **Veo 3.1, Grok Video, Qwen Video** với free tier.
+
+1. Truy cập https://ai.ezif.in/docs
+2. Đăng nhập bằng Google (không cần credit card)
+3. Copy API key vào `.env`:
+   ```
+   KIVEST_API_KEY=your_key_here
+   VIDEO_ASSETS_ENABLED=true
+   ```
+4. Pipeline sẽ tự động generate video B-roll cho mỗi scene.
+
+### Cách bật
+
+Trong `.env`:
+```bash
+# Bật stage sinh video B-roll
+VIDEO_ASSETS_ENABLED=true
+VIDEO_ASSETS_DURATION_SEC=5            # 5 hoặc 8
+VIDEO_ASSETS_ASPECT_RATIO=16:9         # 16:9 | 9:16 | 1:1
+VIDEO_ASSETS_QUALITY=draft             # draft (rẻ) | standard | high
+
+# Chọn provider (mặc định: multi = auto-fallback)
+VIDEO_PROVIDER=multi
+VIDEO_PROVIDER_PRIORITY=kivest,veo,kling
+
+# Kivest (FREE - https://ai.ezif.in/docs)
+KIVEST_API_KEY=your_kivest_key
+KIVEST_BASE_URL=https://ai.ezif.in
+
+# Veo 3.1 (đã có GEMINI_API_KEY ở trên)
+# → tự động dùng làm fallback nếu Kivest hết quota
+
+# Kling (FREE limited - https://klingai.com)
+KLING_ACCESS_KEY=your_kling_ak
+KLING_SECRET_KEY=your_kling_sk
+```
+
+### Lưu ý
+
+- **Mặc định OFF** (`VIDEO_ASSETS_ENABLED=false`) để giữ tương thích với pipeline cũ
+- Khi bật, mỗi environment cần ~1-5 phút generate (tùy provider)
+- Free tier giới hạn: 4-10 video/ngày (Kivest/Veo) hoặc 66/tháng (Kling)
+- **Khuyến nghị**: Chạy 1-2 jobs test trước, xem chất lượng ưng ý rồi mới scale
+
+### Output
+
+Video được lưu cùng chỗ với background PNG:
+```
+workspace/<job_id>/backgrounds/
+  ├── ice_age_plains.png   # Image (luôn có)
+  ├── ice_age_plains.mp4   # Video (nếu VIDEO_ASSETS_ENABLED=true)
+  ├── cave_interior.png
+  ├── cave_interior.mp4
+  └── ...
+```
+
+Metadata ở `workspace/<job_id>/video_assets.json`:
+```json
+{
+  "enabled": true,
+  "provider": "kivest",
+  "duration_sec": 5,
+  "aspect_ratio": "16:9",
+  "videos": {
+    "ice_age_plains": "backgrounds/ice_age_plains.mp4",
+    "cave_interior": "backgrounds/cave_interior.mp4"
+  },
+  "failed": {}
+}
+```
 
 ---
 
@@ -314,6 +410,7 @@ P14 Thumbnails ✅ HOÀN THÀNH
 P15 Publishing ✅ HOÀN THÀNH
 P16 Real APIs  ✅ HOÀN THÀNH (Client layer, cần HTTP cho live upload)
 P16.5 Research ✅ HOÀN THÀNH
+P17 AI Video   ✅ HOÀN THÀNH (Multi-provider B-roll với fallback)
 
 Future work:
   - Analytics dashboard

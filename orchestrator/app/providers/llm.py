@@ -32,8 +32,13 @@ def get_cursor_agent():
     return None
 
 
-def get_llm_provider() -> LLMProvider:
-    """Trả về LLM provider. Ưu tiên Cursor SDK > Groq > OpenAI > Mock."""
+def get_llm_provider(prefer_large_context: bool = False) -> LLMProvider:
+    """Trả về LLM provider. Ưu tiên Cursor SDK > Groq > OpenAI > Mock.
+
+    Args:
+        prefer_large_context: Nếu True, ưu tiên OpenRouter (rate limit cao hơn cho input lớn).
+                              Dùng cho stages như SceneJson cần input >8k tokens.
+    """
 
     # 1. Cursor SDK (nếu có CURSOR_API_KEY)
     cursor_agent = get_cursor_agent()
@@ -41,16 +46,28 @@ def get_llm_provider() -> LLMProvider:
         log.info("Using Cursor SDK agent (your Modal).")
         return cursor_agent  # type: ignore
 
-    # 2. Groq (FREE)
+    # 2. OpenRouter (nếu cần large context)
+    if prefer_large_context and settings.openrouter_api_key:
+        from app.providers.openrouter_llm import OpenRouterLLMProvider
+        log.info("Using OpenRouter LLM (large context mode).")
+        return OpenRouterLLMProvider()
+
+    # 3. Groq (FREE)
     if settings.has_groq:
         log.info("Using Groq LLM provider (FREE).")
         return GroqLLMProvider()
 
-    # 3. OpenAI
+    # 4. OpenAI
     if settings.has_openai:
         log.info("Using OpenAI LLM provider.")
         return OpenAILLMProvider()
 
-    # 4. Mock fallback
+    # 5. OpenRouter fallback
+    if settings.openrouter_api_key:
+        from app.providers.openrouter_llm import OpenRouterLLMProvider
+        log.info("Using OpenRouter LLM (default).")
+        return OpenRouterLLMProvider()
+
+    # 6. Mock fallback
     log.warning("No LLM provider available; using MockLLMProvider (demo mode).")
     return MockLLMProvider()
