@@ -4,7 +4,7 @@
  * composition for the actual render.
  */
 import React from "react";
-import { Composition } from "remotion";
+import { Composition, registerRoot } from "remotion";
 
 import { Documentary } from "./compositions/Documentary";
 import { loadSceneDefinition } from "./lib/loadScene";
@@ -48,7 +48,7 @@ export const RemotionRoot: React.FC = () => {
   return (
     <Composition
       id="Documentary"
-      component={Documentary}
+      component={Documentary as React.FC}
       durationInFrames={durationFrames}
       fps={sd.meta.fps}
       width={sd.meta.width}
@@ -57,7 +57,12 @@ export const RemotionRoot: React.FC = () => {
         sceneDefinition: sd,
         audioSrc: null,
         narrationDurationSec: sd.meta.target_duration_sec,
+        animationPlans: null,
+        assetPackage: null,
       }}
     />
   );
 };
+
+// Register root for CLI bundling — required by @remotion/bundler.
+registerRoot(RemotionRoot);

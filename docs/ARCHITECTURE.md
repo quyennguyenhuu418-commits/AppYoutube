@@ -101,6 +101,9 @@ Implementation: `orchestrator/app/db/store.py:130`. Each job is a JSON file
 under `workspace/{job_id}/job.json`. The same directory also holds all
 stage outputs.
 
+For PROMPT 12, render jobs use a dedicated `render_job.json` at
+`workspace/{job_id}/render_job.json`, managed by `RenderOrchestrator`.
+
 Configured-but-unused: `docker-compose.yml` declares `redis` and
 `postgres:16` services. The orchestrator code never imports a DB driver or
 SQLAlchemy. See `docs/TECHNICAL_DEBT.md` C-006.
@@ -182,9 +185,66 @@ Two distinct cache layers:
 1. Single-process synchronous pipeline — long-running jobs block the
    FastAPI thread. (No Celery / Redis worker.)
 2. Local filesystem as the only persistence — not concurrent-safe across
-   multiple uvicorn workers.
+   multiple uvicorn workers. (L-036: single-instance file-based job persistence.)
 3. No git history — no `.git/` directory; no diff-based memory of changes.
 4. No automated contract tests between Python `SceneDefinition` and TS
    `SceneDefinition` mirror.
+
+## Render Orchestration Architecture (PROMPT 12)
+
+```
+                    Next.js
+                       |
+                       ▼
+                 FastAPI Render API  (/render/*)
+                       |
+            ┌──────────┴──────────┐
+            ▼                     ▼
+       Preflight              Job State  (render_job.json)
+            │
+            ▼
+        RenderStage
+            │
+            ▼
+        RenderPlan
+            │
+            ▼
+         Remotion  (subprocess)
+            │
+            ▼
+     RawRenderArtifact
+            │
+            ▼
+     MasteringPipeline  (P11)
+     ├── mix_audio()
+     ├── master_audio()
+     ├── mux()
+     ├── run_qa()
+     └── finalize()
+            │
+            ▼
+      MediaQAReport
+            │
+            ▼
+      Atomic Finalize
+            │
+            ▼
+    FinalVideoArtifact
+            │
+       ┌────┴─────┐
+       ▼          ▼
+    Inspector   Video API  (/render/{id}/video)
+       │          │
+       ▼          ▼
+    React UI    HTML5 <video>
+```
+
+**Single canonical rendering path.** The orchestrator calls the existing
+P11 `MasteringPipeline`. The web UI never invokes FFmpeg directly.
+The API never bypasses `RenderPlan` or manually constructs
+`FinalVideoArtifact`.
+
+See `docs/PROMPT 12 — FINAL REPORT.md` for the full implementation
+report.
 
 See `docs/TECHNICAL_DEBT.md` for the full list.

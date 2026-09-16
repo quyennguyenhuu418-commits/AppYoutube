@@ -131,14 +131,14 @@ Verification: `VERIFIED`, `UNVERIFIED`, `BLOCKED`.
 | stage_id | `s7_narration` |
 | file | `orchestrator/app/pipeline/stages/s7_narration.py:52` |
 | class | `NarrationStage` |
-| responsibility | TTS synthesize narration; emit audio + word timestamps |
+| responsibility | TTS synthesize narration; emit audio + word timestamps (LEGACY — superseded by app.voice pipeline) |
 | input | `script.json` |
 | output | `workspace/{job_id}/narration.mp3`, `narration.words.json` |
-| dependencies | `TTSProvider` |
-| status | IMPLEMENTED |
+| dependencies | `TTSProvider` (legacy app.providers.tts) |
+| status | IMPLEMENTED (LEGACY) |
 | verification | UNVERIFIED |
 | tests | NONE |
-| next_action | none |
+| next_action | Migrate to use `app.voice.pipeline.run_tts_pipeline()` for canonical AudioArtifacts (PROMPT 8 §3, future work) |
 
 ---
 
@@ -165,15 +165,15 @@ Verification: `VERIFIED`, `UNVERIFIED`, `BLOCKED`.
 | field | value |
 |---|---|
 | stage_id | `s9_validate` |
-| file | `orchestrator/app/pipeline/stages/s9_validate.py:35` |
+| file | `orchestrator/app/pipeline/stages/s9_validate.py` |
 | class | `ValidateStage` |
-| responsibility | Pydantic `SceneDefinition` validation; on failure re-runs s8 once |
-| input | `scene_definition.json` |
+| responsibility | Pydantic `SceneDefinition` validation; **deterministic post-generation asset ID validation** (loads `asset_registry.json` + `asset_system_package.json`, rejects unknown `character_id`/`environment_id`/`prop.kind`); on failure re-runs s8 once |
+| input | `scene_definition.json`, `asset_registry.json`, `asset_system_package.json` |
 | output | validated `SceneDefinition` (also written back) |
-| dependencies | Pydantic v2 |
+| dependencies | Pydantic v2, AssetRegistry, AssetSystemPackage |
 | status | IMPLEMENTED |
-| verification | UNVERIFIED |
-| tests | indirect via `test_scene_definition.py` |
+| verification | **VERIFIED (Prompt 6.5)** — integration test rejects unknown IDs |
+| tests | `test_pipeline_integration_65.py::test_validate_accepts_known_assets`, `test_validate_rejects_unknown_character_id`, `test_validate_rejects_unknown_environment_id`, `test_validate_rejects_unknown_prop_kind` (4 new tests) |
 | next_action | none |
 
 ---
@@ -192,8 +192,8 @@ Verification: `VERIFIED`, `UNVERIFIED`, `BLOCKED`.
 | timeout | 900 s (15 min) |
 | retry | none |
 | status | IMPLEMENTED |
-| verification | UNVERIFIED |
-| tests | NONE |
+| verification | **VERIFIED (smoke, Prompt 6.5)** — `scripts/render_smoke_test.py` produced 51.8 KB MP4 |
+| tests | `scripts/render_smoke_test.py` (manual integration driver, produces real video) |
 | next_action | none |
 
 ---
@@ -253,3 +253,28 @@ mode is global.
 There is **no per-stage retry**. The runner captures the first exception
 and marks the job `failed` (`runner.py:83`). `s9_validate` is the only
 stage with an internal retry — it re-runs s8 once on validation failure.
+
+---
+
+## Voice/TTS Pipeline (PROMPT 8, future stage)
+
+A canonical voice/TTS pipeline is implemented in `app.voice.pipeline`
+but is NOT yet wired as a pipeline stage. It is exercised via the
+voice smoke script and unit/E2E tests. Future work will replace
+`NarrationStage` (s7) with a stage that calls
+`run_tts_pipeline()` and emits canonical `AudioArtifact` files.
+
+| field | value |
+|---|---|
+| stage_id | (TBD, future -- would be s7.5 or replace s7) |
+| file | `orchestrator/app/voice/pipeline.py` |
+| class | `run_tts_pipeline()` function |
+| responsibility | Build NarrationScript -> resolve voice via VoiceResolver -> synthesize via VoiceTTSProvider -> validate + write canonical AudioArtifact -> build SpeechTiming -> build NarrationTimeline |
+| input | `script.json`, storyboard (optional) |
+| output | `audio_artifacts.json`, `speech_timings.json`, `narration_timeline.json`, WAV files in `voice_audio/` |
+| dependencies | VoiceRegistry, VoiceResolver, VoiceTTSProvider, VoiceTTSCache, AudioValidator |
+| status | IMPLEMENTED |
+| verification | VERIFIED (test_voice_pipeline.py + test_voice_e2e.py + voice_audio_smoke_test.py) |
+| tests | 171 voice tests + 8 E2E + smoke |
+| next_action | Wire as `s7_voice_tts` stage in pipeline runner |
+

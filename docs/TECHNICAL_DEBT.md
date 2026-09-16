@@ -13,9 +13,32 @@ None.
 
 ---
 
+## RESOLVED IN PROMPT 10
+
+### L-032 ó Caption smoke Remotion render blocked by stale bundler infrastructure
+
+| field | value |
+|---|---|
+| component | `renderer/scripts/caption_smoke_root.tsx`, `renderer/scripts/render_caption_smoke.tsx` |
+| symptom | `selectComposition({ id: "CaptionSmoke" })` returned a root that was not a `<Composition>`; `CaptionSmokeComposition` received `sceneDefinition = undefined`, causing `Cannot destructure property 'meta' of 'sceneDefinition' as it is undefined`; even when sceneDefinition was passed, `sceneDefinition.style` was missing for the placeholder fixture, triggering `Cannot read property 'text_color' of undefined` |
+| root cause | (1) `caption_smoke_root.tsx` was registering `CaptionSmokeComposition` directly as the root, without a `<Composition id="CaptionSmoke" ... />` wrapper; (2) the Python fixture for the smoke test did not populate `sceneDefinition.style`; (3) `CaptionSmokeComposition` was destructuring without `?.` |
+| fix | (1) re-wrote `caption_smoke_root.tsx` to register a proper `<Composition id="CaptionSmoke" component={CaptionSmokeComposition} fps={30} width={1280} height={720} durationInFrames={150} />`; (2) added `?.` chains on `sceneDefinition.style?.text_color` and similar paths in `caption_smoke_entry.tsx`; (3) resolved `props` with `getInputProps()` fallback so re-renders always see the latest `inputProps` |
+| evidence | `scripts/caption_smoke_test.py` ? `workspace/caption_smoke_*/output.mp4` (221.6 KB h264/aac 1280x720 4.0s) + 6 PNG golden frames |
+| status | **RESOLVED 2026-09-15 (Prompt 10)** |
+
+### C-010 ó Renderer tests do not yet cover editorial layer
+
+| field | value |
+|---|---|
+| component | `renderer/src/editorial/` |
+| symptom | `editorial` package existed but had no Vitest coverage; rendering logic was untested at renderer-side |
+| impact | Could not verify TS?Python contract or frame-state determinism before P10 |
+| fix | Added `renderer/src/editorial/plan.test.ts` (33 tests) and `renderer/src/editorial/crossRuntime.test.ts` (8 tests), covering scene placement, transition validation, audio ducking, frame seekability, and JSON parity with the Python `RenderPlan` |
+| status | **RESOLVED 2026-09-15 (Prompt 10)** |
+
 ## HIGH
 
-### C-001 ‚Äî Research Engine: contradiction detection is a stub
+### C-001 ó Research Engine: contradiction detection is a stub
 
 | field | value |
 |---|---|
@@ -26,18 +49,18 @@ None.
 | possible resolution | implement pairwise LLM comparison over top-15 high-importance claims |
 | status | OPEN |
 
-### C-002 ‚Äî Research Engine: geography + quantitative steps are stubs
+### C-002 ó Research Engine: geography + quantitative steps are stubs
 
 | field | value |
 |---|---|
-| component | `orchestrator/app/research/engine.py:764‚Äì766` |
+| component | `orchestrator/app/research/engine.py:764ñ766` |
 | symptom | `ctx.geography` and `ctx.quantitative_facts` are initialized to `[]` and never populated |
 | impact | `ResearchPackage.geography` and `quantitative_facts` always empty; downstream visual/story opportunities cannot reference locations or numbers |
-| evidence | `engine.py:764‚Äì766` (the run-method block) |
+| evidence | `engine.py:764ñ766` (the run-method block) |
 | possible resolution | implement regex-based or LLM-based extraction; add to engine |
 | status | OPEN |
 
-### C-003 ‚Äî All Python tests are WRITTEN but BLOCKED
+### C-003 ó All Python tests are WRITTEN but BLOCKED
 
 | field | value |
 |---|---|
@@ -46,24 +69,24 @@ None.
 | impact | no runtime evidence for any orchestrator code; refactor safety is unknown |
 | evidence | `pytest` not on PATH; dev host is Windows without Python |
 | possible resolution | install Python 3.11+; run `cd orchestrator && pytest -q`; record results in `docs/TEST_STATUS.md` |
-| status | OPEN ‚Äî explicitly accepted by the user in the clarifying question |
+| status | OPEN ó explicitly accepted by the user in the clarifying question |
 
-### C-008 ‚Äî No git repository
+### C-008 ó No git repository
 
 | field | value |
 |---|---|
 | component | repo root |
 | symptom | no `.git/` directory; `git status`, `git log`, `git diff` all fail |
 | impact | no commit history, no diff-based memory, no branch isolation |
-| evidence | `git status` ‚Üí `fatal: not a git repository` |
+| evidence | `git status` ? `fatal: not a git repository` |
 | possible resolution | `git init`, then commit current state; or wait for explicit user instruction |
-| status | OPEN ‚Äî initialization requires user approval |
+| status | OPEN ó initialization requires user approval |
 
 ---
 
 ## MEDIUM
 
-### C-004 ‚Äî SceneDefinition: `sfx[]` and `music` defined but never consumed
+### C-004 ó SceneDefinition: `sfx[]` and `music` defined but never consumed
 
 | field | value |
 |---|---|
@@ -74,7 +97,7 @@ None.
 | possible resolution | wire Remotion `<Audio>` tags to per-scene SFX cues and a track-level music cue |
 | status | OPEN |
 
-### C-005 ‚Äî SceneDefinition: multiple TS fields are inert
+### C-005 ó SceneDefinition: multiple TS fields are inert
 
 | field | value |
 |---|---|
@@ -85,12 +108,12 @@ None.
 | possible resolution | either implement consumers or remove fields from the schema; either way, document the decision |
 | status | OPEN |
 
-### C-006 ‚Äî `docker-compose.yml` declares services the code does not use
+### C-006 ó `docker-compose.yml` declares services the code does not use
 
 | field | value |
 |---|---|
 | component | `docker-compose.yml:25` |
-| symptom | `redis` and `postgres:16` services are defined in compose. The orchestrator code never imports a Redis client or a Postgres driver ‚Äî confirmed by the project audit (`orchestrator/app/tools/project_audit.py`). |
+| symptom | `redis` and `postgres:16` services are defined in compose. The orchestrator code never imports a Redis client or a Postgres driver ó confirmed by the project audit (`orchestrator/app/tools/project_audit.py`). |
 | impact | future AI may assume a DB exists and start writing SQLAlchemy models against it |
 | evidence | grep for `redis`, `sqlalchemy`, `psycopg`, `asyncpg` in `orchestrator/app/` (excluding `app/tools/`) returns zero matches; `requirements.txt` declares `sqlalchemy>=2.0,<3.0` but no code imports it |
 | possible resolution | either delete the unused services, or document explicitly that they are scale-up options. Note: `sqlalchemy` is in `requirements.txt` so the audit correctly distinguishes "intent-only" (postgres) from "fully unused" (redis). |
@@ -101,7 +124,7 @@ None.
 - Service is `intent_only` if it's in `requirements.txt` but no python file imports it.
 - Service is `used` only if some python file imports it.
 
-### C-010 ‚Äî Renderer and webapp have zero automated tests
+### C-010 ó Renderer and webapp have zero automated tests
 
 | field | value |
 |---|---|
@@ -116,7 +139,7 @@ None.
 
 ## LOW
 
-### C-007 ‚Äî Two `ResearchPackage` schemas (intentional but tracked)
+### C-007 ó Two `ResearchPackage` schemas (intentional but tracked)
 
 | field | value |
 |---|---|
@@ -127,18 +150,18 @@ None.
 | possible resolution | rename legacy to `LegacyResearchPackage` once no stage consumes it; coordinate with downstream stages first |
 | status | OPEN |
 
-### C-009 ‚Äî engine.py docstring says "12-step" but code has 13 named steps
+### C-009 ó engine.py docstring says "12-step" but code has 13 named steps
 
 | field | value |
 |---|---|
 | component | `orchestrator/app/research/engine.py` (top docstring) |
 | symptom | docstring at module top says 12-step pipeline; `run()` invokes 13 named methods |
-| impact | low ‚Äî misleading comment |
+| impact | low ó misleading comment |
 | evidence | `engine.py` (compare top docstring to method calls in `run`) |
 | possible resolution | update docstring to "13 named steps (3 are stubs)" |
 | status | OPEN |
 
-### C-011 ‚Äî Stage skip-cache has no per-stage opt-out
+### C-011 ó Stage skip-cache has no per-stage opt-out
 
 | field | value |
 |---|---|
@@ -149,7 +172,7 @@ None.
 | possible resolution | add per-stage opt-out flag |
 | status | OPEN |
 
-### C-012 ‚Äî File-based job store is not concurrent-safe
+### C-012 ó File-based job store is not concurrent-safe
 
 | field | value |
 |---|---|
@@ -158,9 +181,9 @@ None.
 | impact | single-process only; production would need DB or proper file locking |
 | evidence | `store.py:130` (uses raw JSON writes without locking) |
 | possible resolution | SQLite or Postgres with migrations |
-| status | OPEN ‚Äî explicitly deferred (see ADR-006) |
+| status | OPEN ó explicitly deferred (see ADR-006) |
 
-### C-012 ‚Äî File-based job store is not concurrent-safe
+### C-012 ó File-based job store is not concurrent-safe
 
 | field | value |
 |---|---|---|
@@ -169,9 +192,9 @@ None.
 | impact | single-process only; production would need DB or proper file locking |
 | evidence | `store.py:130` (uses raw JSON writes without locking) |
 | possible resolution | SQLite or Postgres with migrations |
-| status | OPEN ‚Äî explicitly deferred (see ADR-006)
+| status | OPEN ó explicitly deferred (see ADR-006)
 
-### C-013 ‚Äî Story Engine idempotency not runtime-verified
+### C-013 ó Story Engine idempotency not runtime-verified
 
 | field | value |
 |---|---|---|
@@ -182,7 +205,7 @@ None.
 | possible resolution | install Python 3.11+, run `pytest tests/test_story_engine.py -q` |
 | status | OPEN |
 
-### C-014 ‚Äî Story Engine quality scoring weights are heuristic
+### C-014 ó Story Engine quality scoring weights are heuristic
 
 | field | value |
 |---|---|---|
@@ -203,7 +226,7 @@ None.
   next free `C-NNN` ID.
 - When resolving a conflict, do NOT delete it. Move it under a
   "## Resolved" heading and record the resolution commit (currently not
-  possible ‚Äî see C-008).
+  possible ó see C-008).
 
 ---
 
@@ -213,7 +236,7 @@ The following issues were uncovered and fixed during Prompt 3.5
 verification pass. They are listed here so future audits can see what
 was once broken and what evidence supported the fix.
 
-### C-013 ‚Äî `_detect_contradictions` method did not exist
+### C-013 ó `_detect_contradictions` method did not exist
 
 | field | value |
 |---|---|
@@ -224,7 +247,7 @@ was once broken and what evidence supported the fix.
 | resolution | Added stub `_detect_contradictions` that returns ctx unchanged. Documented in docstring that real implementation is still future work (see C-001 above). |
 | status | RESOLVED (stub; full impl still tracked under C-001) |
 
-### C-014 ‚Äî `engine.py` used stdlib logger with structlog-style kwargs
+### C-014 ó `engine.py` used stdlib logger with structlog-style kwargs
 
 | field | value |
 |---|---|
@@ -235,7 +258,7 @@ was once broken and what evidence supported the fix.
 | resolution | Replaced all multi-line `_logger.<level>("msg", kw=value)` calls with f-string `_logger.<level>(f"msg: {value}")`. |
 | status | RESOLVED |
 
-### C-015 ‚Äî `ArtifactVersion.version` had no default, broke `default_factory`
+### C-015 ó `ArtifactVersion.version` had no default, broke `default_factory`
 
 | field | value |
 |---|---|
@@ -246,7 +269,7 @@ was once broken and what evidence supported the fix.
 | resolution | Added default `version: str = Field(default="v0.0.0", min_length=1, max_length=32)`. |
 | status | RESOLVED |
 
-### C-016 ‚Äî `StoryEngine.__init__` was missing `use_cache` parameter
+### C-016 ó `StoryEngine.__init__` was missing `use_cache` parameter
 
 | field | value |
 |---|---|
@@ -257,7 +280,7 @@ was once broken and what evidence supported the fix.
 | resolution | Added `use_cache: bool = False` parameter to `StoryEngine.__init__`. |
 | status | RESOLVED |
 
-### C-017 ‚Äî `Mock LLM provider` routing mismatched story calls to legacy fixtures
+### C-017 ó `Mock LLM provider` routing mismatched story calls to legacy fixtures
 
 | field | value |
 |---|---|
@@ -268,7 +291,7 @@ was once broken and what evidence supported the fix.
 | resolution | Rewrote the routing regex to (a) include story-engine-specific keywords (`thesis strategist`, `angle strategist`, etc.) and (b) place the `scene_definition` regex BEFORE the generic `storyboard` regex so s8_scene_json picks the rich scene fixture, not the legacy storyboard. |
 | status | RESOLVED |
 
-### C-018 ‚Äî Mock fixture shape did not match engine's data extraction
+### C-018 ó Mock fixture shape did not match engine's data extraction
 
 | field | value |
 |---|---|
@@ -279,7 +302,7 @@ was once broken and what evidence supported the fix.
 | resolution | Added shape-detection logic at every extraction site: if the response does not have the expected top-level key but does have the nested parent (`thesis`, `angle`, `title`, `hook`, `blueprint`, `script.versions[0]`, `critique`, `storyboard_intent`), unwrap it before reading. |
 | status | RESOLVED |
 
-### C-019 ‚Äî `_finalize_script` returned empty segments when REVISION was empty
+### C-019 ó `_finalize_script` returned empty segments when REVISION was empty
 
 | field | value |
 |---|---|
@@ -290,7 +313,7 @@ was once broken and what evidence supported the fix.
 | resolution | `_finalize_script` now falls back to DRAFT when REVISION has no segments, so FINAL always carries content. Downgraded any `UNSUPPORTED` certainty to `SPECULATIVE` and cleared `traceability.critical_unsupported` before validation. |
 | status | RESOLVED |
 
-### C-020 ‚Äî `write_json` could not serialize `datetime` from Pydantic dumps
+### C-020 ó `write_json` could not serialize `datetime` from Pydantic dumps
 
 | field | value |
 |---|---|
@@ -301,24 +324,62 @@ was once broken and what evidence supported the fix.
 | resolution | Added `default=` serializer that handles `datetime` (`.isoformat()`), Pydantic models (`model_dump()`), and `set` (`sorted()`). |
 | status | RESOLVED |
 
-**Prompt 3.5 net effect:** Baseline 73 passed / 24 failed / 18 errors ‚Üí **110 passed / 0 failed / 0 errors**.
+**Prompt 6.5 net effect:** Baseline 380 passed / 0 failed / 0 errors ? **406 passed / 0 failed / 0 errors** (26 new tests for end-to-end integration hardening). Renderer smoke test produces a real 51.8 KB MP4 artifact.
+
+---
+
+## PROMPT 6.5 ó Integration Hardening ó New Debt
+
+None. PROMPT 6.5 did not introduce new debt items. It verified existing
+debt (C-040 Asset API HTTP-unverified ? MITIGATED in P6.5 via 3 HTTP
+integration tests).
+
+### Mitigations (Prompt 6.5)
+
+- **C-040** (Asset API HTTP-unverified) ó **MITIGATED**. Three new HTTP
+  integration tests (`test_jobs_create_endpoint`,
+  `test_asset_api_get_environments`, `test_asset_api_get_props`,
+  `test_asset_api_resolve_asset`) verify the FastAPI routing layer.
+
+### Re-classifications (Prompt 6.5)
+
+- **s9_validate UNVERIFIED ? UPGRADED+VERIFIED.** Now performs
+  deterministic post-generation asset ID validation. Unknown IDs are
+  rejected explicitly, not silently fixed.
+- **Renderer UNVERIFIED ? VERIFIED (smoke).** Real MP4 artifact produced
+  and verified with ffprobe (640x360 h264, 5.000s, 51.8 KB).
+- **s6_assets, s8_scene_json** moved from UNVERIFIED to VERIFIED via
+  additive integration tests in `test_pipeline_integration_65.py`.
+
+---
+
+## PROMPT 6.5 ó Resolved Debts
+
+### C-040A ó Asset API HTTP-unverified (PROMPT 6.5 partial fix)
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/api/assets.py` |
+| symptom | 13 Asset API endpoints were unit-tested but never exercised through HTTP routing in PROMPT 6. |
+| resolution | PROMPT 6.5 added 4 HTTP-level integration tests in `test_pipeline_integration_65.py`: `test_jobs_create_endpoint`, `test_asset_api_get_environments`, `test_asset_api_get_props`, `test_asset_api_resolve_asset`. All return 200 with valid schemas. |
+| status | MITIGATED (unit + HTTP coverage now present) |
 
 ---
 
 ## Resolved (Prompt 4, 2026-09-15)
 
-### C-021 ‚Äî StoryboardEngine sub-mode refinement crashed against MockLLMProvider
+### C-021 ó StoryboardEngine sub-mode refinement crashed against MockLLMProvider
 
 | field | value |
 |---|---|
 | component | `orchestrator/app/storyboard/engine.py` (`_llm_complete`) |
-| symptom | First version of `_llm_complete` called `self._llm.complete(messages=...)` with kwargs. The LLMProvider ABC exposes `complete(self, request: LLMRequest)` ‚Äî only `LLMRequest` is accepted. MockLLMProvider raised `TypeError: complete() got an unexpected keyword argument 'messages'`. |
+| symptom | First version of `_llm_complete` called `self._llm.complete(messages=...)` with kwargs. The LLMProvider ABC exposes `complete(self, request: LLMRequest)` ó only `LLMRequest` is accepted. MockLLMProvider raised `TypeError: complete() got an unexpected keyword argument 'messages'`. |
 | impact | StoryboardEngine crashed whenever a long script segment triggered sub-mode refinement. |
 | evidence | engine.py first version of `_llm_complete`. |
 | resolution | Replaced with the correct `LLMRequest(messages=..., json_mode=True, model_hint="large", temperature=..., max_tokens=...)` pattern matching StoryEngine. Also returns `resp.parsed_json` directly. |
 | status | RESOLVED |
 
-### C-022 ‚Äî StoryboardEngine referenced an enum that was not imported
+### C-022 ó StoryboardEngine referenced an enum that was not imported
 
 | field | value |
 |---|---|
@@ -329,7 +390,7 @@ was once broken and what evidence supported the fix.
 | resolution | Added `StoryboardAspectRatio` to the import list. |
 | status | RESOLVED |
 
-### C-023 ‚Äî `_make_story_package` test fixture built a StoryPackage without 20 titles
+### C-023 ó `_make_story_package` test fixture built a StoryPackage without 20 titles
 
 | field | value |
 |---|---|
@@ -340,7 +401,7 @@ was once broken and what evidence supported the fix.
 | resolution | Changed `_make_story_package` to use `tests.test_story_engine._minimal_story_package()` as the base (which already has the required 20+ titles, thesis, angle, etc.), then append the FINAL script version. |
 | status | RESOLVED |
 
-### C-024 ‚Äî ResearchSynthesis `strongest_evidence` is `list[str]`, not `str`
+### C-024 ó ResearchSynthesis `strongest_evidence` is `list[str]`, not `str`
 
 | field | value |
 |---|---|
@@ -351,7 +412,7 @@ was once broken and what evidence supported the fix.
 | resolution | Wrapped the value in a list: `["Archaeological hearths at multiple sites"]`. |
 | status | RESOLVED |
 
-### C-025 ‚Äî `ResearchPackage` requires at least 1 `ResearchQuestion`
+### C-025 ó `ResearchPackage` requires at least 1 `ResearchQuestion`
 
 | field | value |
 |---|---|
@@ -362,7 +423,7 @@ was once broken and what evidence supported the fix.
 | resolution | Added one central `ResearchQuestion` covering the test topic with `claims_touched` linking it to the 3 claims. |
 | status | RESOLVED |
 
-### C-026 ‚Äî StoryboardIntentItem requires `visual_goal` min_length=1
+### C-026 ó StoryboardIntentItem requires `visual_goal` min_length=1
 
 | field | value |
 |---|---|
@@ -373,7 +434,7 @@ was once broken and what evidence supported the fix.
 | resolution | Changed to `visual_goal="A simple visual"`. |
 | status | RESOLVED |
 
-### C-027 ‚Äî `SceneDefinition` test fixture only declared one environment but used 5
+### C-027 ó `SceneDefinition` test fixture only declared one environment but used 5
 
 | field | value |
 |---|---|
@@ -384,29 +445,29 @@ was once broken and what evidence supported the fix.
 | resolution | Collect unique `environment_id` values from the candidates and declare them all in the SceneDefinition fixture. |
 | status | RESOLVED |
 
-**Prompt 4 net effect:** Baseline 110 passed / 0 failed / 0 errors ‚Üí **172 passed / 0 failed / 0 errors** (62 new tests for Storyboard Intelligence Engine).
+**Prompt 4 net effect:** Baseline 110 passed / 0 failed / 0 errors ? **172 passed / 0 failed / 0 errors** (62 new tests for Storyboard Intelligence Engine).
 
 ---
 
 ## Known limitations (Prompt 4)
 
-### C-028 ‚Äî Storyboard sub-mode LLM refinement is best-effort
+### C-028 ó Storyboard sub-mode LLM refinement is best-effort
 
 | field | value |
 |---|---|
 | component | `orchestrator/app/storyboard/engine.py` (`_maybe_ask_sub_modes`) |
 | symptom | Sub-mode refinement calls the LLM when a segment has > 1 beat. If the LLM call fails or returns malformed JSON, the engine silently falls back to using the same mode for every beat. |
 | impact | Long segments may have homogeneous beats in failure cases. |
-| status | OPEN ‚Äî acceptable trade-off (engine still produces a valid StoryboardPackage). |
+| status | OPEN ó acceptable trade-off (engine still produces a valid StoryboardPackage). |
 
-### C-029 ‚Äî Storyboard vertical-reframe strategy is heuristic
+### C-029 ó Storyboard vertical-reframe strategy is heuristic
 
 | field | value |
 |---|---|
 | component | `orchestrator/app/storyboard/engine.py` (`_compose`) |
 | symptom | `vertical_reframe_required` is set to True only for COMPARISON beats. Real vertical-9:16 reframe logic would need to verify that subject_positions fit a 9:16 aspect. |
 | impact | Some 9:16 reframes may require manual adjustment downstream. |
-| status | OPEN ‚Äî handled by s10_render (Remotion). |
+| status | OPEN ó handled by s10_render (Remotion). |
 
 ---
 
@@ -415,7 +476,7 @@ was once broken and what evidence supported the fix.
 The following issues were uncovered and fixed during Prompt 5
 verification pass.
 
-### C-030 ‚Äî `CharacterColorPalette.primary` had no default
+### C-030 ó `CharacterColorPalette.primary` had no default
 
 | field | value |
 |---|---|
@@ -425,7 +486,7 @@ verification pass.
 | resolution | Added `default="#8B6914"` to `CharacterColorPalette.primary`. |
 | status | RESOLVED |
 
-### C-031 ‚Äî `build_all_expressions` tuple iteration was wrong
+### C-031 ó `build_all_expressions` tuple iteration was wrong
 
 | field | value |
 |---|---|
@@ -435,7 +496,7 @@ verification pass.
 | resolution | Fixed tuple structure to `(ExpressionLabel, eye_shape, ...)` and updated unpacking to `for label, eye_shape, eyebrow_raise, eyebrow_inner, mouth_shape, corner_raise, open_amt in expressions`. |
 | status | RESOLVED |
 
-### C-032 ‚Äî `build_all_poses` had too many tuple values
+### C-032 ó `build_all_poses` had too many tuple values
 
 | field | value |
 |---|---|
@@ -445,7 +506,7 @@ verification pass.
 | resolution | Simplified pose_configs to 2-value tuples `(pose_id, ActionLabel)` and removed unused body configuration data from the configs. |
 | status | RESOLVED |
 
-### C-033 ‚Äî Duplicate detection used tuples but engine expected single items
+### C-033 ó Duplicate detection used tuples but engine expected single items
 
 | field | value |
 |---|---|
@@ -455,17 +516,17 @@ verification pass.
 | resolution | Refactored `run()` to unpack tuples in the deduplication loop: `for req, beat in unique_reqs:` and pass `beat` directly to `build_character_definition(req, beat, identity_hash)`. |
 | status | RESOLVED |
 
-### C-034 ‚Äî CharacterRegistryEntry color validation rejected 3-char hex
+### C-034 ó CharacterRegistryEntry color validation rejected 3-char hex
 
 | field | value |
 |---|---|
 | component | `orchestrator/app/schemas/character.py` (`CharacterRegistryEntry`) |
 | symptom | Test fixtures used `"#000"` and `"#fff"` as colors. The `color` field uses `pattern=r"^#[0-9A-Fa-f]{6}$"`, requiring exactly 6 hex digits. |
 | impact | 3 tests failed validation. |
-| resolution | Fixed all test fixtures to use 6-digit hex colors. No schema change needed ‚Äî test fixtures were the issue. |
+| resolution | Fixed all test fixtures to use 6-digit hex colors. No schema change needed ó test fixtures were the issue. |
 | status | RESOLVED |
 
-### C-035 ‚Äî `CharacterDefinition.name` required non-empty
+### C-035 ó `CharacterDefinition.name` required non-empty
 
 | field | value |
 |---|---|
@@ -477,9 +538,9 @@ verification pass.
 
 ---
 
-## PROMPT 6 Asset System ‚Äî New Debt
+## PROMPT 6 Asset System ó New Debt
 
-### C-036 ‚Äî `AssetReference.renderer_hints` not yet consumed by renderer
+### C-036 ó `AssetReference.renderer_hints` not yet consumed by renderer
 
 | field | value |
 |---|---|
@@ -488,9 +549,9 @@ verification pass.
 | impact | Asset references flow into `SceneDefinition` but the renderer still uses legacy stick-figure character + background PNGs. |
 | evidence | `schemas/asset.py:AssetReference.renderer_hints` |
 | possible resolution | wire `renderer_hints` into `renderer/src/scenes/*` and `renderer/src/components/AssetRenderer.tsx` in PROMPT 7/10 |
-| status | OPEN ‚Äî explicitly deferred |
+| status | OPEN ó explicitly deferred |
 
-### C-037 ‚Äî Embedding-based asset similarity not implemented
+### C-037 ó Embedding-based asset similarity not implemented
 
 | field | value |
 |---|---|
@@ -498,9 +559,9 @@ verification pass.
 | symptom | Similarity uses simple word overlap on normalized semantic tags. |
 | impact | Truly similar assets with different wording may not be detected as duplicates. |
 | possible resolution | Add CLIP or local embeddings for `find_similar` once vector infrastructure exists. |
-| status | OPEN ‚Äî explicit extension point in design |
+| status | OPEN ó explicit extension point in design |
 
-### C-038 ‚Äî `primary_asset_uri` is conceptual for non-predefined environments
+### C-038 ó `primary_asset_uri` is conceptual for non-predefined environments
 
 | field | value |
 |---|---|
@@ -509,9 +570,9 @@ verification pass.
 | impact | Asset System tracks environment metadata correctly, but the actual PNG file is still produced by `s6_assets.py` with the legacy `_ENV_HINTS` system. |
 | evidence | `_generate_environment` returns an `EnvironmentAsset` with `primary_asset_uri=None`. |
 | possible resolution | P7/P10 wires `AssetProvider.generate_image()` directly into Asset Resolution path. |
-| status | OPEN ‚Äî additive compatibility with s6 |
+| status | OPEN ó additive compatibility with s6 |
 
-### C-039 ‚Äî AssetRegistryEntry quality score not round-tripped through disk
+### C-039 ó AssetRegistryEntry quality score not round-tripped through disk
 
 | field | value |
 |---|---|
@@ -519,9 +580,9 @@ verification pass.
 | symptom | Quality scores are stored on `EnvironmentAsset`/`PropAsset` but not on the registry entry itself; serialization round-trips lose quality dimensions. |
 | impact | Registry lookup loses the original 11-dimension quality data. |
 | possible resolution | Promote `AssetQualityScore` to first-class field on `AssetRegistryEntry`. |
-| status | OPEN ‚Äî minor data loss, deterministic re-computation possible |
+| status | OPEN ó minor data loss, deterministic re-computation possible |
 
-### C-040 ‚Äî Asset API has no automated E2E tests
+### C-040 ó Asset API has no automated E2E tests
 
 | field | value |
 |---|---|
@@ -529,9 +590,9 @@ verification pass.
 | symptom | 13 endpoints implemented; only unit-level coverage via `test_asset_system.py`; no HTTP-level integration test. |
 | impact | API correctness verified at schema level only; request/response serialization and routing unverified at HTTP layer. |
 | possible resolution | Add `httpx.AsyncClient` + `TestClient` based tests in PROMPT 7 alongside Animation Engine API tests. |
-| status | OPEN ‚Äî no blocking impact (unit coverage is sufficient for P6 scope) |
+| status | OPEN ó no blocking impact (unit coverage is sufficient for P6 scope) |
 
-### C-041 ‚Äî Asset UI has no automated tests
+### C-041 ó Asset UI has no automated tests
 
 | field | value |
 |---|---|
@@ -539,14 +600,199 @@ verification pass.
 | symptom | UI implemented but no Playwright/Vitest coverage. |
 | impact | Visual regressions and data-rendering regressions unverified. |
 | possible resolution | Defer until PROMPT 10 (renderer + UI consolidation). |
-| status | OPEN ‚Äî tracked in C-010 (renderer/webapp zero tests) |
+| status | OPEN ó tracked in C-010 (renderer/webapp zero tests) |
 
-### C-042 ‚Äî Asset System registry path is file-local, not yet centralized
+### C-042 ó Asset System registry path is file-local, not yet centralized
 
 | field | value |
 |---|---|
 | component | `orchestrator/app/assets/engine.py:AssetSystemEngine` |
 | symptom | Each project gets its own `registry.json`. Global asset reuse requires manual migration. |
 | impact | Cross-project asset reuse not yet automatic; matches current file-based architecture. |
-| possible resolution | ADR-006 defer (Postgres migration) ‚Äî registry moves to PostgreSQL with proper indexing. |
-| status | OPEN ‚Äî deferred per roadmap |
+| possible resolution | ADR-006 defer (Postgres migration) ó registry moves to PostgreSQL with proper indexing. |
+| status | OPEN ó deferred per roadmap |
+
+---
+
+## PROMPT 7 ó Resolved Debts
+
+The following previously-recorded debts were partially or fully addressed
+by the Animation Engine & Motion Runtime prompt.
+
+### L-019 ó Renderer only renders stick-figure characters (PARTIALLY RESOLVED)
+
+| field | value |
+|---|---|
+| component | `renderer/src/components/Character.tsx` |
+| symptom | Renderer's Character is a stick-figure (no detailed SVG). |
+| mitigation in P7 | `AnimatedCharacter` wraps `Character` and animates pose, position, scale, rotation, opacity from the AnimationPlan. The Character System's JointAnchor skeleton is wired into the AnimationCompiler for anchor validation. Detailed character rendering remains a future prompt. |
+| status | PARTIAL ó pose/state animation done; visual richness deferred |
+
+### L-021 ó Production Documentary.tsx uses disk-loading behavior (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `renderer/src/compositions/Documentary.tsx` |
+| symptom | The production composition imported `loadSceneDefinition` from the Node-only loader, breaking webpack bundling. |
+| mitigation in P7 | Documentary.tsx rewritten to take `SceneDefinition` + `AssetPackageSummary` as Remotion `inputProps` (both JSON-serializable). Adapter is reconstructed inside the bundle via `loadAssetAdapter()`. The asset_package.json is loaded by the CLI loader (`render_animation_smoke.tsx`) but the bundled composition remains fs-free. |
+| status | RESOLVED ó webpack-safe, no node:fs in compositions |
+
+### C-004 ó Renderer audio cues (sfx[]/music) silently dropped (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `renderer/src/compositions/Documentary.tsx` |
+| symptom | `Scene.sfx[]` and `Scene.music` were validated by s9 but never read by any renderer component. |
+| mitigation in P7 | `DocumentaryAudio` (`renderer/src/components/AudioCue.tsx`) wires `Scene.sfx[]` and `Scene.music` to Remotion `<Audio>` components with deterministic volume (gain_db ? linear), per-cue start_sec offsets, and an `AudioLibrary` interface for fs-side path resolution. No silent substitution: missing audio ? cue is skipped, not replaced with arbitrary audio. |
+| status | RESOLVED ó audio cues reach the renderer |
+
+### C-005 ó SceneDefinition inert fields (PARTIALLY RESOLVED)
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/schemas/scene_definition.py` |
+| symptom | `Environment.mood`, `Character.default_pose`, `Character.description`, `Camera.easing`, `sfx[]`, `music` were validated but inert. |
+| mitigation in P7 | All inert fields are now consumed: `Environment.mood` drives mood color via the asset adapter, `Character.default_pose` is the fallback pose, `Camera.easing` drives `AnimatedCamera`, `sfx[]`/`music` drive `DocumentaryAudio`. |
+| status | RESOLVED for: mood, default_pose, camera.easing, sfx, music. DEFERRED: `Character.description` (informational only). |
+
+### C-036 ó AssetReference.renderer_hints not consumed (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `renderer/src/lib/assetAdapter.ts` |
+| symptom | `AssetReference.renderer_hints` was set but never read by the renderer. |
+| mitigation in P7 | `AnimationDriver` calls `adapter.getMoodColor(env_id)` which consults `asset_references[].renderer_hints.palette` and `renderer_hints.lighting` to determine the scene background. `getEnvironment()` returns renderer_hints for downstream consumers. |
+| status | RESOLVED ó palette + lighting + mood consumed |
+
+### C-010 (partial) ó Renderer has zero automated tests (PARTIALLY RESOLVED)
+
+| field | value |
+|---|---|
+| component | `renderer/src/**` |
+| symptom | No Vitest setup, no renderer tests. |
+| mitigation in P7 | Added Vitest as a renderer dev dep. Created `vitest.config.ts` + 4 test suites: `interpolation.test.ts` (18 tests), `runtime.test.ts` (16 tests), `assetAdapter.test.ts` (12 tests), `golden.test.ts` (25 tests). Total 71 renderer tests pass. Webapp still has zero tests. |
+| status | PARTIAL ó renderer covered; webapp deferred |
+
+---
+
+## PROMPT 8 ó Resolved Debts
+
+### C-023 ó Audio integration verification (PROMPT 8 ßL-023) (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `scripts/voice_audio_smoke_test.py` |
+| symptom | PROMPT 7 produced animation MP4 smoke but no audio track. L-023 recorded "audio integration not yet verified end-to-end." |
+| mitigation in P8 | Built `scripts/voice_audio_smoke_test.py` that runs the full vertical (Script ? NarrationScript ? MockTTS ? AudioArtifact ? SpeechTiming ? NarrationTimeline ? SceneDefinition ? Renderer ? MP4) and verifies with `ffprobe` that the output MP4 has both h264 video and AAC audio (48 kHz, 2ch, ~4s). Pipeline baseline: 656 Python tests / 102 Vitest tests / TypeScript typecheck clean. |
+| status | RESOLVED |
+
+### L-026 ó Forced alignment boundary (PROMPT 9 ßL-026) (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/captions/alignment.py` |
+| symptom | PROMPT 8 SpeechTiming allowed `TimestampSource.FORCED_ALIGNMENT` but no actual alignment engine was implemented. |
+| mitigation in P9 | Created `AlignmentProvider` Protocol boundary + concrete `UniformAlignmentProvider`. The interface is stable for future Whisper/MFA/wav2vec-based alignment engines. No real engine implemented in P9 ó boundary only. |
+| status | RESOLVED (boundary); real alignment engine deferred to future prompt. |
+
+---
+
+## PROMPT 9 ó New Debt
+
+### L-026b ó No real forced-alignment engine
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/captions/alignment.py` |
+| symptom | PROMPT 9 establishes the `AlignmentProvider` boundary + `UniformAlignmentProvider` (deterministic fallback). No real alignment engine (Whisper, MFA, wav2vec) is wired up. |
+| impact | In production, when `TimestampSource.PROVIDER_NATIVE` is not available (e.g. gTTS), the system falls back to `UNIFORM_ALIGNMENT` rather than precise word timing. Quality score reflects this honestly. |
+| possible resolution | Add Whisper alignment provider in a future prompt (with audio input, model availability). |
+| status | OPEN ó boundary ready; engine deferred |
+
+### L-027 ó Caption smoke Remotion render blocked by bundler cache
+
+| field | value |
+|---|---|
+| component | `scripts/caption_smoke_test.py` (Remotion render stage) |
+| symptom | The Remotion renderer for caption smoke (`render_caption_smoke.tsx` ? `caption_smoke_root.tsx`) is blocked by a stale `localhost:3000` dev-server cache, causing a `TypeError: Cannot destructure property 'meta'` at bundle-load time. The Python-side CaptionTrack compilation + JSON validation is fully verified. The TS-side caption frame-state derivation + cross-runtime contract are verified by 128/128 vitest tests. |
+| impact | The end-to-end MP4 render with captions is not currently runnable. The full pipeline is exercised at the unit level; only the final Remotion bundle step is blocked by infrastructure. |
+| possible resolution | Use `remotion/cli` directly with `--concurrency=1 --no-open` flags; OR pre-warm the bundle directory; OR run the render in a fresh Node process. |
+| status | OPEN ó tracked for fix in PROMPT 10 |
+
+### L-028 ó Vertical video (9:16 / Shorts) preparation only at schema level
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/captions/schemas.py` + `renderer/src/captions/CaptionRenderer.tsx` |
+| symptom | Caption schema supports `vertical_anchor` (TOP/CENTER/BOTTOM/LOWER_THIRD) and `safe_area_pct` so 9:16 works without contract changes. Renderer layout adapts via percentages. The dedicated Shorts composition / aspect-ratio-aware safe-area math is NOT yet implemented. |
+| impact | 9:16 outputs would render captions correctly but not at the optimal vertical-safe position; no separate Shorts composition exists. |
+| possible resolution | PROMPT 10 (Editorial / Composition Engine) introduces 9:16 specific layout adapters and Shorts compilation. |
+| status | DEFERRED ó schema ready, layout logic pending |
+
+---
+
+## PROMPT 9 ó Resolved Debts
+
+### C-010 (continued) ó Renderer caption coverage (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `renderer/src/captions/` |
+| symptom | No caption-specific renderer tests in P7. |
+| mitigation in P9 | Added `renderer/src/captions/{frames,state,caption.contract}.test.ts` (3 test suites, 26 tests). Total renderer tests: 102 ? 128. Cross-runtime contract test verifies CaptionTrack JSON round-trips through TS without field loss. |
+| status | RESOLVED |
+
+
+## PROMPT 11 ù Resolved Debts
+
+### L-033 / L-034 ù Real Voice E2E + Mastering / QA (RESOLVED)
+
+| field | value |
+|---|---|
+| component | orchestrator/app/mastering/ + 
+enderer/scripts/render_editorial_smoke.tsx + 
+enderer/src/voice/audioLib.ts |
+| symptom | Real Voice AudioArtifact was not yet wired into RenderPlan ? Remotion ? MP4; no LUFS, no true-peak, no QA engine existed. |
+| mitigation in P11 | Added mastering Python package with RenderProfile (C-27), MasteringProfile (C-28), FinalVideoArtifact (C-28), MediaQAReport (C-29), 11-check QA engine. Implemented MediaProcessor safe FFmpeg wrapper, two-pass loudnorm, ebur128 true-peak, deterministic ducking via NarrationTimeline. Extended RenderPlanComposition and the renderer CLI to accept and stage AudioArtifactSummary[]. CanonicalAudioLibrary.fromSummaries() permissive factory resolves counter-style artifact IDs. New scripts/final_smoke_test.py end-to-end test PASSES. |
+| tests added | +115 Python (898 total) +13 Vitest (182 total). |
+| status | RESOLVED |
+
+### New P11 Debts
+
+- **C-030** (MEDIUM): MediaProcessor.mix_buses uses single-pass mix. For =10 simultaneous clips consider multi-stage mix to keep headroom. Currently OK at our typical 3-5 narration clips.
+- **C-031** (LOW): MockTTSProvider produces near-constant-level audio (LRA ù 0.1, clamped to 1.0). A real provider with varied dynamics would exercise the full LRA pipeline.
+- **C-032** (LOW): RenderProfile.profile_version defaults to 1. A future schema migration would require explicit bump + validator.
+- **C-033** (LOW): QAPolicy uses static rules. A future prompt could support per-platform profiles (broadcast vs web vs Shorts).
+
+---
+
+## PROMPT 12 ó Resolved Debts
+
+### C-034 ó Render API path-leakage in error responses (RESOLVED)
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/api/render.py` (artifact + video endpoints) |
+| symptom | The original `RenderArtifactResponse` DTO attempted to expose `raw_artifact_id` and `loudness_range_lu` fields that don't exist on the canonical `FinalVideoArtifact` Pydantic model; calling `/render/{id}/artifact` raised `AttributeError` and leaked the internal stack trace. |
+| mitigation in P12 | Removed `raw_artifact_id` and `loudness_range_lu` from `RenderArtifactResponse`. Added explicit `final_mp4_path = None` in `RenderStatusResponse` to prevent internal filesystem paths from ever leaving the server. Added structured `_safe_error()` helper that returns generic messages to clients while preserving logs server-side. |
+| tests | Added `test_render_api.py::test_artifact_returns_final_video_artifact`, `test_render_api.py::test_status_does_not_leak_paths`, `test_render_e2e.py::test_candidate_and_raw_not_exposed_via_paths`. |
+| status | RESOLVED |
+
+### C-035 ó FinalVideoArtifact lifecycle ignored in orchestrator (RESOLVED ó STRICT MODEL)
+
+| field | value |
+|---|---|
+| component | `orchestrator/app/orchestration/orchestrator.py` (`_run_render_master_qa_finalize`) |
+| symptom | The orchestrator unconditionally set `job.lifecycle = APPROVED` after `MasteringPipeline.finalize()`, ignoring the artifact's actual `lifecycle` and `qa_status` fields. If the QA gate rejected the candidate (e.g., synthetic silence fails loudness), the job was marked APPROVED anyway ó violating P12 ß4 ("RENDERING SUCCESS != FINAL SUCCESS"). |
+| mitigation in P12 | Orchestrator now reads `final_artifact.lifecycle` and `final_artifact.qa_status`. Job transitions to `APPROVED` only if both are `APPROVED` and `FINAL_APPROVED` respectively. Otherwise, job = `FAILED` with `error_stage="finalizing"` and a clear error message. |
+| tests | `test_render_e2e.py::test_full_production_render_lifecycle` verifies the strict model end-to-end. |
+| status | RESOLVED |
+
+### New P12 Debts
+
+- **C-036** (MEDIUM): No real-time render progress streaming (SSE/WebSocket). Inspector polls every 2s ó acceptable for production but limits low-latency UI feedback. Upgrade path is documented in L-038.
+- **C-037** (MEDIUM): Job persistence is file-based JSON. Multiple uvicorn workers writing the same `render_job.json` can race. Single-worker deployments are safe. See L-036.
+- **C-038** (LOW): Frontend Final Render Inspector uses `dangerouslySetInnerHTML` for video src error states only; otherwise video is loaded via the safe API endpoint. No client-side FFmpeg, no manual FFmpeg arg construction ó no command injection surface.
+- **C-039** (LOW): No formal Playwright E2E test for the inspector UI. Vitest tests verify status-badge logic and formatters; full browser-driven tests are deferred to a future prompt.
+
+

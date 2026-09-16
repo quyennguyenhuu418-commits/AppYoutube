@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "remotion studio",
     "build": "tsc --noEmit",
-    "render": "tsx src/index.ts"
+    "render": "tsx src/index.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0",
@@ -21,6 +22,7 @@
     "@types/react": "^18.2",
     "@types/react-dom": "^18.2",
     "tsx": "^4.7",
-    "typescript": "^5.3"
+    "typescript": "^5.3",
+    "vitest": "^1.6.1"
   }
 }

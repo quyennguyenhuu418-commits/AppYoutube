@@ -1,3 +1,50 @@
+
+
+## PROMPT 7 — Animation System
+
+New files added to the system map:
+
+Python (orchestrator):
+    app/animation/
+        __init__.py            — public surface (re-exports)
+        schemas.py             — canonical animation schemas
+        compiler.py            — validate / normalize / resolve
+        builder.py             — StoryboardPackage -> AnimationPlan
+        action_mapper.py       — narrative verb -> canonical clip
+        interpolation.py       — canonical interpolation math
+
+TypeScript (renderer):
+    src/animation/
+        interpolation.ts        — canonical interpolation math (mirrors Python)
+        runtime.ts            — AnimationPlan types + computeFrameState
+        index.ts             — fs-free public surface
+    src/components/
+        AnimatedCharacter.tsx  — animated character from AnimationPlan
+        AnimatedProp.tsx       — animated prop from AnimationPlan
+        AnimatedCamera.tsx      — animated camera from AnimationPlan
+        AnimationDriver.tsx    — orchestrates per-scene animation
+        AudioCue.tsx           — Scene.sfx[] and Scene.music wiring
+    src/lib/
+        audioLibrary.ts        — Node-side audio path resolver (fs-only)
+
+Renderer CLI:
+    src/render_animation_smoke.tsx   — animation smoke test CLI
+    src/animation_smoke_entry.tsx    — animation smoke test Remotion composition
+
+New reverse-dependencies (PROMPT 7):
+    animation_plan.json     produced by: AnimationPlanBuilder  consumed by: renderer (via inputProps)
+    CharacterSystemPackage consumed by: AnimationCompiler (anchor validation)
+
+## Animation Runtime Boundary
+
+    orchestrator: AnimationPlanBuilder --> AnimationPlan (JSON)
+                           AnimationCompiler (validate)
+    renderer (bundle): loadAssetAdapter() --> AssetAdapter
+                             computeFrameState() --> CharacterFrameState
+                             AnimatedCharacter --> Character (SVG)
+                             AnimatedProp --> PropRenderer
+                             AnimatedCamera --> Camera wrapper
+                             DocumentaryAudio --> Remotion <Audio>
 # DEPENDENCY_GRAPH
 
 Cross-system dependencies. Edges represent "X produces artifact consumed
@@ -128,13 +175,27 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Python["Python orchestrator"] -- scene_definition.json + narration.mp3 --> Node["Remotion renderer (Node)"]
+    Python["Python orchestrator"] -- scene_definition.json + asset_system_package.json + narration.mp3 --> Node["Remotion renderer (Node)"]
     Node -- output.mp4 --> Python
 ```
 
 This is the **single cross-runtime contract** in the system. Any change to
 `SceneDefinition` is a breaking change unless coordinated with the TS
 mirror (`renderer/src/scenes/types.ts`).
+
+### Asset Adapter (PROMPT 6.5)
+
+```mermaid
+flowchart LR
+    AssetRef["AssetReference (Python schema)"] --> SceneDef["SceneDefinition (cross-runtime)"]
+    SceneDef --> AssetAdapter["assetAdapter.ts (fs-free)"]
+    AssetAdapter --> Renderer["renderer components"]
+```
+
+`assetAdapter.ts` is the fs-free bridge between `AssetReference` and
+renderer components. It is safe to import from Remotion compositions
+because it does not pull in `node:fs`. The Node.js-side loader
+(`assetAdapterLoader.ts`) is used exclusively by `render_cli.tsx`.
 
 ## Cycle Detection
 
@@ -155,6 +216,69 @@ DAG by construction (runner iterates `STAGES` linearly).
 | `character_system_package.json` | CharacterSystemEngine | `/api/characters/*` API, future: s8 bridge |
 | `narration.mp3` | s7 | s10, webapp |
 | `narration.words.json` | s7 | s8 (word-by-word captions) |
-| `scene_definition.json` | s8, s9 | s10 |
-| `output.mp4` | s10 | s11, webapp |
+| `asset_system_package.json` | AssetSystemEngine (P6) | s6 bridge, s8 asset injection, `/api/assets/*` API |
+| `registry.json` | AssetSystemEngine (P6) | s9 validate (P6.5 asset integrity check) |
+| `scene_definition.json` | s8, s9 (with asset integrity check) | s10 |
+| `output.mp4` | s10 (verified smoke MP4 in P6.5) | s11, webapp |
 | `shorts/short.mp4` | s11 | webapp |
+
+---
+
+## PROMPT 8 -- Voice / TTS / Audio Intelligence Layer
+
+New files added to the system map:
+
+Python (orchestrator):
+    app/voice/
+        __init__.py            -- public surface
+        schemas.py             -- VoiceDefinition / NarrationScript / AudioArtifact / SpeechTiming / NarrationTimeline
+        lifecycle.py           -- VoiceLifecycleStatus + transitions
+        registry.py            -- VoiceRegistryManager
+        resolver.py            -- VoiceResolver (policy + audit log)
+        provider_base.py       -- VoiceTTSProvider interface + errors
+        mock_tts.py            -- MockTTSProvider (deterministic stdlib wave)
+        provider_factory.py    -- select_provider + LegacyProviderAdapter
+        audio_artifact.py      -- AudioArtifact creation + SHA-256 fingerprint
+        audio_validator.py     -- AudioValidator
+        cache.py               -- VoiceTTSCache (content-addressed)
+        narration.py           -- build_narration_script adapter
+        pronunciation.py       -- PronunciationHint + EmphasisHint
+        timing.py              -- build_speech_timing
+        timeline.py            -- build_timeline + reconcile_duration
+        pipeline.py            -- run_tts_pipeline
+
+TypeScript (renderer):
+    src/voice/
+        types.ts               -- canonical types mirroring Python
+        audioLib.ts            -- CanonicalAudioLibrary
+        timeline.ts            -- scene-timing helpers
+        index.ts               -- public exports
+    src/render_audio_smoke.tsx -- narration audio smoke renderer
+
+Scripts:
+    scripts/voice_audio_smoke_test.py -- full vertical: TTS -> Remotion -> MP4 -> ffprobe
+
+Tests:
+    orchestrator/tests/test_voice_*.py -- 13 voice test modules (171 tests)
+    orchestrator/tests/test_voice_e2e.py -- 8 E2E tests including ffprobe
+    renderer/src/voice/*.test.ts -- 31 Vitest tests
+
+Dependencies (new):
+  * No new external runtime dependencies (stdlib `wave` only)
+  * `ffprobe` (PATH) required for audio verification in smoke test
+
+Producer/Consumer graph:
+  Script -> build_narration_script -> NarrationScript
+  NarrationScript -> VoiceResolver -> VoiceResolution
+  VoiceResolution -> VoiceTTSProvider.synthesize() -> VoiceTTSResponse
+  VoiceTTSResponse + voice -> write_audio_artifact() -> AudioArtifact
+  AudioArtifact -> apply_validation_to_artifact() -> AudioArtifact (validated)
+  Provider word_timestamps -> build_speech_timing() -> SpeechTiming
+  (NarrationScript, AudioArtifact, SpeechTiming) -> build_timeline() -> NarrationTimeline
+  NarrationTimeline -> renderer/voice/timeline.ts (scene offset helpers)
+  NarrationTimeline -> renderer/voice/audioLib.ts (CanonicalAudioLibrary)
+  CanonicalAudioLibrary -> AudioCue.tsx -> Remotion <Audio> -> MP4 audio stream
+  MP4 -> ffprobe (stream + codec + duration verification)
+
+No breaking changes to existing dependencies.
+

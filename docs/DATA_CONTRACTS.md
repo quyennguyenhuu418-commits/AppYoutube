@@ -8,7 +8,7 @@ Status values: `CANONICAL`, `LEGACY_COMPAT`, `INTERNAL`.
 
 ---
 
-## C-01 â€” `SceneDefinition`
+## C-01 — `SceneDefinition`
 
 | field | value |
 |---|---|
@@ -17,7 +17,7 @@ Status values: `CANONICAL`, `LEGACY_COMPAT`, `INTERNAL`.
 | TS mirror | `renderer/src/scenes/types.ts` (hand-written, **no automated sync**) |
 | producer | `orchestrator/app/pipeline/stages/s8_scene_json.py` |
 | validator | `orchestrator/app/pipeline/stages/s9_validate.py` |
-| consumer | `renderer/src/index.ts` â†’ `loadScene.ts` â†’ `Documentary.tsx` |
+| consumer | `renderer/src/index.ts` ? `loadScene.ts` ? `Documentary.tsx` |
 | validation mechanism | Pydantic v2 model + cross-field validators |
 | serialization | JSON written to `workspace/{job_id}/scene_definition.json` |
 | status | CANONICAL |
@@ -25,9 +25,9 @@ Status values: `CANONICAL`, `LEGACY_COMPAT`, `INTERNAL`.
 
 ### Top-level fields (from `scene_definition.py`)
 
-- `meta: Meta` (required) â€” title, description, fps, width, height,
+- `meta: Meta` (required) — title, description, fps, width, height,
   target_duration_sec
-- `style: Style` (default factory) â€” primary_color, accent_color,
+- `style: Style` (default factory) — primary_color, accent_color,
   background_color, text_color, font_family
 - `characters: list[Character]` (min 1, max 12)
 - `environments: list[Environment]` (min 1, max 16)
@@ -37,19 +37,19 @@ Status values: `CANONICAL`, `LEGACY_COMPAT`, `INTERNAL`.
 
 See `docs/TECHNICAL_DEBT.md` C-004/C-005.
 
-- `Scene.sfx[]` â€” defined in TS, never read.
-- `Scene.music` â€” defined in TS, never read.
-- `OverlayText.exit_at_sec` â€” defined in TS, never read.
-- `Actor.exit_anim` â€” defined in TS, computed but never applied.
-- `Character.name`, `Character.description`, `Character.default_pose` â€”
+- `Scene.sfx[]` — defined in TS, never read.
+- `Scene.music` — defined in TS, never read.
+- `OverlayText.exit_at_sec` — defined in TS, never read.
+- `Actor.exit_anim` — defined in TS, computed but never applied.
+- `Character.name`, `Character.description`, `Character.default_pose` —
   validated, never rendered.
-- `Environment.name`, `Environment.mood` â€” validated, never rendered.
-- `Style.primary_color` â€” defined, never read by any scene component.
+- `Environment.name`, `Environment.mood` — validated, never rendered.
+- `Style.primary_color` — defined, never read by any scene component.
 - `NarrationScene` ignores `scene.overlay_text[]`.
 
 ---
 
-## C-02 â€” `ResearchPackage` (canonical, rich)
+## C-02 — `ResearchPackage` (canonical, rich)
 
 | field | value |
 |---|---|
@@ -63,27 +63,27 @@ See `docs/TECHNICAL_DEBT.md` C-004/C-005.
 
 ### Sections (17)
 
-1. `metadata: ResearchMetadata` â€” topic, language, generated_at, model_id,
+1. `metadata: ResearchMetadata` — topic, language, generated_at, model_id,
    schema_version, sources_consulted
 2. `research_questions: list[ResearchQuestion]`
-3. `sources: list[Source]` â€” tier, url, title, snippet, content_hash, score
+3. `sources: list[Source]` — tier, url, title, snippet, content_hash, score
 4. `source_lineage: list[SourceLineage]`
-5. `claims: list[Claim]` â€” claim_type, text, confidence, certainty_level
+5. `claims: list[Claim]` — claim_type, text, confidence, certainty_level
 6. `claim_source_links: list[ClaimSourceLink]`
-7. `contradictions: list[Contradiction]` â€” **(always empty today; see
+7. `contradictions: list[Contradiction]` — **(always empty today; see
    `docs/TECHNICAL_DEBT.md` C-001)**
 8. `timeline: list[TimelineEvent]`
-9. `geography: list[GeographicSite]` â€” **(always empty today; see
+9. `geography: list[GeographicSite]` — **(always empty today; see
    `docs/TECHNICAL_DEBT.md` C-002)**
-10. `quantitative_facts: list[QuantitativeFact]` â€” **(always empty today;
+10. `quantitative_facts: list[QuantitativeFact]` — **(always empty today;
     see `docs/TECHNICAL_DEBT.md` C-002)**
 11. `visual_opportunities: list[VisualOpportunity]`
 12. `story_opportunities: list[StoryOpportunity]`
 13. `research_gaps: list[ResearchGap]`
-14. `synthesis: ResearchSynthesis` â€” central_question, strongest_evidence,
+14. `synthesis: ResearchSynthesis` — central_question, strongest_evidence,
     weakest_evidence, uncertainties
-15. `quality_score: ResearchQualityScore` â€” 9-axis + overall
-16. `audit_trail: list[ResearchEvent]` â€” structured log
+15. `quality_score: ResearchQualityScore` — 9-axis + overall
+16. `audit_trail: list[ResearchEvent]` — structured log
 17. `open_questions: list[str]`
 
 ### Bridge to legacy
@@ -93,22 +93,22 @@ See `docs/TECHNICAL_DEBT.md` C-004/C-005.
 
 ---
 
-## C-03 â€” `ResearchPackage` (legacy, compat)
+## C-03 — `ResearchPackage` (legacy, compat)
 
 | field | value |
 |---|---|
 | version | 1 |
 | file | `orchestrator/app/schemas/research.py` (22 lines) |
 | producer | `ResearchPackage.to_legacy_dict()` |
-| consumer | downstream stages s2â€“s5 (currently) |
+| consumer | downstream stages s2–s5 (currently) |
 | validation | Pydantic v2 |
 | serialization | JSON written to `workspace/{job_id}/research.json` |
-| status | LEGACY_COMPAT â€” preserved only for downstream consumers |
+| status | LEGACY_COMPAT — preserved only for downstream consumers |
 
 ### Fields
 
 - `topic: str`
-- `facts: list[FactClaim]` â€” claim, sources
+- `facts: list[FactClaim]` — claim, sources
 - `open_questions: list[str]`
 
 **Do not rename or remove without coordinating with all downstream stages
@@ -116,7 +116,7 @@ and updating the bridge method.**
 
 ---
 
-## C-04 â€” `JobDetail` / `JobSummary` / `JobCreateRequest`
+## C-04 — `JobDetail` / `JobSummary` / `JobCreateRequest`
 
 | field | value |
 |---|---|
@@ -137,7 +137,7 @@ and updating the bridge method.**
 
 ---
 
-## C-05 â€” `Thesis`
+## C-05 — `Thesis`
 
 | field | value |
 |---|---|
@@ -155,7 +155,7 @@ and updating the bridge method.**
 
 ---
 
-## C-06 â€” `TitlePackage`
+## C-06 — `TitlePackage`
 
 | field | value |
 |---|---|
@@ -172,7 +172,7 @@ and updating the bridge method.**
 
 ---
 
-## C-07 â€” `Script`
+## C-07 — `Script`
 
 | field | value |
 |---|---|
@@ -189,7 +189,7 @@ and updating the bridge method.**
 
 ---
 
-## C-08 â€” `Storyboard`
+## C-08 — `Storyboard`
 
 | field | value |
 |---|---|
@@ -205,14 +205,14 @@ and updating the bridge method.**
 
 ---
 
-## C-09 â€” Asset (background PNG)
+## C-09 — Asset (background PNG)
 
 | field | value |
 |---|---|
 | file | `orchestrator/app/pipeline/stages/s6_assets.py` (implicit; no Pydantic model) |
 | producer | `s6_assets.py` |
 | consumer | `s8_scene_json.py` (writes `environment.background_asset` to SceneDefinition) |
-| status | INTERNAL â€” file-on-disk; not a typed contract |
+| status | INTERNAL — file-on-disk; not a typed contract |
 
 ### Shape
 
@@ -222,7 +222,7 @@ and updating the bridge method.**
 
 ---
 
-## C-10 â€” Narration
+## C-10 — Narration
 
 | field | value |
 |---|---|
@@ -234,11 +234,11 @@ and updating the bridge method.**
 ### Outputs
 
 - `workspace/{job_id}/narration.mp3`
-- `workspace/{job_id}/narration.words.json` â€” `list[WordTimestamp]`
+- `workspace/{job_id}/narration.words.json` — `list[WordTimestamp]`
 
 ---
 
-## C-11 â€” `RenderResult`
+## C-11 — `RenderResult`
 
 | field | value |
 |---|---|
@@ -253,7 +253,7 @@ and updating the bridge method.**
 
 ---
 
-## C-12 â€” `StoryPackage`
+## C-12 — `StoryPackage`
 
 | field | value |
 |---|---||
@@ -267,22 +267,22 @@ and updating the bridge method.**
 
 ### Sections (16)
 
-1. `metadata: StoryMetadata` â€” story_package_id, research_package_id, research_package_hash, topic, job_id, status, review_status
-2. `thesis: ThesisSelection` â€” candidates + selected_id + artifact_version
-3. `angle: AngleSelection` â€” candidates + selected_id + artifact_version
-4. `title: TitleSelection` â€” candidates + selected_id + validated_against_script
-5. `hook: HookSelection` â€” candidates + selected_id
-6. `blueprint: NarrativeBlueprint` â€” beats + total_estimated_duration_sec + flags
-7. `script: ScriptDraft` â€” versions (DRAFT/REVISION/FINAL) + active_version
-8. `traceability: ClaimTraceabilityReport` â€” entries + critical_unsupported + coverage scores
-9. `critique: ScriptCritique` â€” findings + counts + flags
-10. `retention: RetentionAnalysis` â€” segment_retentions + risks
-11. `revision_history: RevisionHistory` â€” entries + current_revision_number
-12. `storyboard_intent: StoryboardIntent` â€” items + visual_mode_counts
-13. `quality_score: StoryQualityScore` â€” 15 dimensions + overall
-14. `research_failures` â€” drives status BLOCKED
-15. `research_warnings` â€” drives status NEEDS_REVIEW
-16. `research_status` â€” "passed" | "failed" | "warned"
+1. `metadata: StoryMetadata` — story_package_id, research_package_id, research_package_hash, topic, job_id, status, review_status
+2. `thesis: ThesisSelection` — candidates + selected_id + artifact_version
+3. `angle: AngleSelection` — candidates + selected_id + artifact_version
+4. `title: TitleSelection` — candidates + selected_id + validated_against_script
+5. `hook: HookSelection` — candidates + selected_id
+6. `blueprint: NarrativeBlueprint` — beats + total_estimated_duration_sec + flags
+7. `script: ScriptDraft` — versions (DRAFT/REVISION/FINAL) + active_version
+8. `traceability: ClaimTraceabilityReport` — entries + critical_unsupported + coverage scores
+9. `critique: ScriptCritique` — findings + counts + flags
+10. `retention: RetentionAnalysis` — segment_retentions + risks
+11. `revision_history: RevisionHistory` — entries + current_revision_number
+12. `storyboard_intent: StoryboardIntent` — items + visual_mode_counts
+13. `quality_score: StoryQualityScore` — 15 dimensions + overall
+14. `research_failures` — drives status BLOCKED
+15. `research_warnings` — drives status NEEDS_REVIEW
+16. `research_status` — "passed" | "failed" | "warned"
 
 ### Bridge to legacy
 
@@ -290,7 +290,7 @@ and updating the bridge method.**
 
 ---
 
-## C-13 â€” `StoryboardPackage`
+## C-13 — `StoryboardPackage`
 
 | field | value |
 |---|---|
@@ -304,30 +304,30 @@ and updating the bridge method.**
 
 ### Sections (24)
 
-1. `metadata: StoryboardMetadata` â€” storyboard_package_id, story_package_id, story_version, job_id, topic, status, input_hash
-2. `story_package_id: str` â€” provenance to source StoryPackage
-3. `story_version: str` â€” version of source StoryPackage
-4. `segments: list[str]` â€” segment_ids covered
-5. `visual_beats: list[VisualBeat]` â€” the executable visual blueprint
-6. `continuity_state: ContinuityState` â€” running state between beats
-7. `continuity_updates: list[ContinuityUpdate]` â€” what each beat changed
-8. `continuity_dependencies: list[ContinuityDependency]` â€” what each beat depends on
-9. `continuity_issues: list[ContinuityIssue]` â€” warnings + failures
-10. `asset_requirements: list[AssetRequirement]` â€” characters / environments / props / overlays
-11. `camera_plan: list[CameraPlan]` â€” per-beat camera plans
-12. `transition_plan: list[dict]` â€” per-beat transitions with reasons
-13. `text_plan: list[TextItem]` â€” on-screen text (not narration subtitles)
-14. `audio_sync_points: list[AudioSyncPoint]` â€” visual change alignment with narration
-15. `diagram_specs: list[DiagramSpec]` â€” nodes / arrows / sequence
-16. `map_specs: list[MapSpec]` â€” region / locations / routes (no coordinates)
-17. `timeline_specs: list[TimelineSpec]` â€” events / ordering / approximate dates
-18. `comparison_specs: list[ComparisonSpec]` â€” axis / items / values
-19. `data_visualization_specs: list[DataVisualizationSpec]` â€” metric / unit / value / visual_type
-20. `scene_definition_candidates: list[SceneDefinitionCandidate]` â€” render-ready candidates
-21. `storyboard_quality_score: StoryboardQualityScore | None` â€” 14-axis quality score
+1. `metadata: StoryboardMetadata` — storyboard_package_id, story_package_id, story_version, job_id, topic, status, input_hash
+2. `story_package_id: str` — provenance to source StoryPackage
+3. `story_version: str` — version of source StoryPackage
+4. `segments: list[str]` — segment_ids covered
+5. `visual_beats: list[VisualBeat]` — the executable visual blueprint
+6. `continuity_state: ContinuityState` — running state between beats
+7. `continuity_updates: list[ContinuityUpdate]` — what each beat changed
+8. `continuity_dependencies: list[ContinuityDependency]` — what each beat depends on
+9. `continuity_issues: list[ContinuityIssue]` — warnings + failures
+10. `asset_requirements: list[AssetRequirement]` — characters / environments / props / overlays
+11. `camera_plan: list[CameraPlan]` — per-beat camera plans
+12. `transition_plan: list[dict]` — per-beat transitions with reasons
+13. `text_plan: list[TextItem]` — on-screen text (not narration subtitles)
+14. `audio_sync_points: list[AudioSyncPoint]` — visual change alignment with narration
+15. `diagram_specs: list[DiagramSpec]` — nodes / arrows / sequence
+16. `map_specs: list[MapSpec]` — region / locations / routes (no coordinates)
+17. `timeline_specs: list[TimelineSpec]` — events / ordering / approximate dates
+18. `comparison_specs: list[ComparisonSpec]` — axis / items / values
+19. `data_visualization_specs: list[DataVisualizationSpec]` — metric / unit / value / visual_type
+20. `scene_definition_candidates: list[SceneDefinitionCandidate]` — render-ready candidates
+21. `storyboard_quality_score: StoryboardQualityScore | None` — 14-axis quality score
 22. `warnings: list[str]`
 23. `failures: list[str]`
-24. `status: StoryboardStatus` â€” draft | needs_review | approved | rejected | blocked
+24. `status: StoryboardStatus` — draft | needs_review | approved | rejected | blocked
 
 ### VisualBeat fields (~30)
 
@@ -368,7 +368,7 @@ overlay texts, etc. before the existing `s8_scene_json` LLM call finalises.
 
 ---
 
-## C-14 â€” `CharacterSystemPackage`
+## C-14 — `CharacterSystemPackage`
 
 | field | value |
 |---|---|
@@ -382,16 +382,16 @@ overlay texts, etc. before the existing `s8_scene_json` LLM call finalises.
 
 ### Sections (12)
 
-1. `characters: list[CharacterDefinition]` â€” canonical character identities
-2. `instances: list[CharacterInstance]` â€” scene-specific placements
-3. `wardrobes: list[WardrobeDefinition]` â€” clothing configurations
-4. `poses: list[PoseDefinition]` â€” all 8 renderer-supported poses
-5. `expressions: list[ExpressionDefinition]` â€” all 11 canonical expressions
-6. `asset_packages: list[CharacterAssetPackage]` â€” filesystem contract
-7. `resolutions: list[CharacterResolution]` â€” resolution log (new/reuse)
-8. `registry: CharacterRegistry` â€” character management state
-9. `character_quality_scores: dict[str, CharacterQualityScore]` â€” 11-dim per character
-10. `overall_quality_score: float` â€” average of character scores
+1. `characters: list[CharacterDefinition]` — canonical character identities
+2. `instances: list[CharacterInstance]` — scene-specific placements
+3. `wardrobes: list[WardrobeDefinition]` — clothing configurations
+4. `poses: list[PoseDefinition]` — all 8 renderer-supported poses
+5. `expressions: list[ExpressionDefinition]` — all 11 canonical expressions
+6. `asset_packages: list[CharacterAssetPackage]` — filesystem contract
+7. `resolutions: list[CharacterResolution]` — resolution log (new/reuse)
+8. `registry: CharacterRegistry` — character management state
+9. `character_quality_scores: dict[str, CharacterQualityScore]` — 11-dim per character
+10. `overall_quality_score: float` — average of character scores
 11. `warnings: list[str]`
 12. `failures: list[str]`
 
@@ -448,13 +448,13 @@ If a future PR adds a new contract, **search first** to avoid duplication
 
 ---
 
-## C-15 â€” `AssetSystemPackage` (Prompt 6)
+## C-15 — `AssetSystemPackage` (Prompt 6)
 
 | field | value |
 |---|---|
 | version | 1.0.0 |
 | canonical file | `orchestrator/app/schemas/asset.py` |
-| producer | `orchestrator/app/assets/engine.py` â†’ `AssetSystemEngine` |
+| producer | `orchestrator/app/assets/engine.py` ? `AssetSystemEngine` |
 | consumer | `s6_assets.py`, `s8_scene_json.py`, renderer |
 | validation mechanism | Pydantic v2 model + cross-field validators |
 | serialization | JSON written to `workspace/{job_id}/asset_system_package.json` |
@@ -467,15 +467,15 @@ If a future PR adds a new contract, **search first** to avoid duplication
 2. `project_id: str`
 3. `version: str` ("1.0.0")
 4. `schema_version: str` ("1.0.0")
-5. `environments: list[EnvironmentAsset]` â€” all resolved environments
-6. `environment_instances: list[EnvironmentInstance]` â€” scene-specific overrides
-7. `props: list[PropAsset]` â€” all resolved props
-8. `prop_instances: list[PropInstance]` â€” scene-specific placements
-9. `asset_references: list[AssetReference]` â€” renderer-consumable
-10. `resolutions: list[AssetResolution]` â€” resolution log
-11. `registry: AssetRegistry` â€” canonical registry state
-12. `asset_packages: list[AssetPackage]` â€” filesystem contracts
-13. `overall_quality_score: float` â€” aggregated score
+5. `environments: list[EnvironmentAsset]` — all resolved environments
+6. `environment_instances: list[EnvironmentInstance]` — scene-specific overrides
+7. `props: list[PropAsset]` — all resolved props
+8. `prop_instances: list[PropInstance]` — scene-specific placements
+9. `asset_references: list[AssetReference]` — renderer-consumable
+10. `resolutions: list[AssetResolution]` — resolution log
+11. `registry: AssetRegistry` — canonical registry state
+12. `asset_packages: list[AssetPackage]` — filesystem contracts
+13. `overall_quality_score: float` — aggregated score
 14. `quality_scores: dict[str, AssetQualityScore]`
 15. `warnings: list[str]`
 16. `failures: list[str]`
@@ -502,6 +502,20 @@ If a future PR adds a new contract, **search first** to avoid duplication
 | `PropInstance` | Scene-specific prop placement (x/y/scale/rotation/interaction_anchor) |
 | `PropAnchorPoint` | Anchor point on prop for character interaction (grip_left/grip_right/top/center) |
 
+### Asset Identity Integrity (PROMPT 6.5)
+
+`s9_validate.py` now performs deterministic post-generation validation: every `character_id`,
+`environment_id`, and `prop.kind` in `SceneDefinition` is cross-referenced against
+`asset_system_package.json` and `registry.json`. Unknown IDs cause explicit `ValueError`
+(no silent LLM "fixing"). See `test_pipeline_integration_65.py::test_validate_*` (4 tests).
+
+### Renderer Adapter (PROMPT 6.5)
+
+`renderer/src/lib/assetAdapter.ts` bridges `AssetReference` to existing renderer
+components. It is **fs-free** (no `node:fs` imports) so it can be safely imported
+by Remotion compositions. Loader side (`assetAdapterLoader.ts`) is the only module
+that touches `node:fs`, used exclusively by `render_cli.tsx`.
+
 ### Enums
 
 `AssetType` (6), `AssetLifecycle` (9 states), `ReusePolicy` (5 strategies),
@@ -527,14 +541,489 @@ metadata for them.
 
 Content-addressed cache at `workspace/asset_cache/{asset_type}/{asset_id}/v{version}/`
 with SHA-256 fingerprint of inputs + style + provider version. Idempotent: same
-inputs produce same fingerprint â†’ cache hit, no re-generation.
+inputs produce same fingerprint ? cache hit, no re-generation.
 
 ### Reuse Policy Semantics
 
-- `REUSE_ALWAYS` â€” never create new instance; always reference existing
-- `REUSE_PREFERRED` â€” prefer reuse; create only if no match
-- `REUSE_ALLOWED` â€” check for matches first
-- `SCENE_LOCAL` â€” never reuse across scenes
-- `NEVER_REUSE` â€” always generate new
+- `REUSE_ALWAYS` — never create new instance; always reference existing
+- `REUSE_PREFERRED` — prefer reuse; create only if no match
+- `REUSE_ALLOWED` — check for matches first
+- `SCENE_LOCAL` — never reuse across scenes
+- `NEVER_REUSE` — always generate new
 
 ---
+
+ 
+ - - - 
+ 
+ 
+ 
+ # #   C - 1 6      A n i m a t i o n P l a n   ( P R O M P T   7 ) 
+ 
+ 
+ 
+ |   f i e l d   |   v a l u e   | 
+ 
+ | - - - | - - - | 
+ 
+ |   v e r s i o n   |   1 . 0 . 0   | 
+ 
+ |   c a n o n i c a l   f i l e   ( P y t h o n )   |   o r c h e s t r a t o r / a p p / a n i m a t i o n / s c h e m a s . p y   | 
+ 
+ |   c a n o n i c a l   f i l e   ( T S )   |   r e n d e r e r / s r c / a n i m a t i o n / r u n t i m e . t s   | 
+ 
+ |   p r o d u c e r   |   A n i m a t i o n P l a n B u i l d e r   ( o r c h e s t r a t o r / a p p / a n i m a t i o n / b u i l d e r . p y )   | 
+ 
+ |   c o n s u m e r   |   A n i m a t i o n C o m p i l e r ,   A n i m a t i o n D r i v e r   ( r e n d e r e r )   | 
+ 
+ |   s h a p e   |   A n i m a t i o n P l a n   {   m e t a d a t a ,   d u r a t i o n _ s e c ,   c a m e r a ,   c h a r a c t e r s [ ] ,   p r o p s [ ] ,   t r a c k s [ ] ,   e v e n t s [ ] ,   w a r n i n g s [ ] ,   f a i l u r e s [ ]   }   | 
+ 
+ |   s u b - m o d e l s   |   A n i m a t i o n T a r g e t ,   A n i m a t i o n T r a c k ,   K e y f r a m e ,   P o s e S e g m e n t ,   W a l k C y c l e P a r a m s ,   P r o p I n t e r a c t i o n ,   C a m e r a A n i m a t i o n ,   C h a r a c t e r A n i m a t i o n ,   P r o p A n i m a t i o n ,   A n i m a t i o n E v e n t   | 
+ 
+ |   e n u m s   |   I n t e r p o l a t i o n   ( l i n e a r / e a s e _ i n / e a s e _ o u t / e a s e _ i n _ o u t / h o l d ) ,   T a r g e t K i n d ,   A c t i o n L a b e l ,   P o s e T r a n s i t i o n ,   T r a n s f o r m P r o p e r t y ,   C a m e r a P r o p e r t y   | 
+ 
+ 
+ 
+ T h e   A n i m a t i o n P l a n   i s   t h e   c a n o n i c a l   d e c l a r a t i v e   a n i m a t i o n   c o n t r a c t .   T h e   P y t h o n   s c h e m a   a n d   T y p e S c r i p t   r u n t i m e   a r e   h a n d - m i r r o r e d   a n d   m u s t   s t a y   b y t e - e q u i v a l e n t   o n   s e r i a l i z a t i o n   ( v a l i d a t e d   b y   t e s t s ) . 
+ 
+ 
+
+---
+
+## C-17  VoiceDefinition (PROMPT 8)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file (Python) | orchestrator/app/voice/schemas.py |
+| canonical file (TS) | renderer/src/voice/types.ts |
+| producer | VoiceRegistry.register(), LLM voice-intent adapter (future) |
+| consumer | VoiceResolver, VoiceTTSProvider, VoiceTTSCache |
+| shape | VoiceDefinition { voice_id, name, language, locale, gender, provider, provider_voice_id, style, settings (VoiceSettings), supported_languages[], pronunciation_hints[], status, version_label, metadata, created_at } |
+| enums | VoiceLifecycleStatus (DRAFT/VALIDATED/APPROVED/ACTIVE/DEPRECATED/ARCHIVED), VoiceGender, VoiceStyle, TtsProviderName (MOCK/GTTS/ELEVENLABS/LOCAL/F5_TTS/VI_F5_TTS/COSYVOICE) |
+
+Voice identity is canonical and content-based. Lifecycle transitions are audited. Provider-specific fields are isolated.
+
+---
+
+## C-18  NarrationScript (PROMPT 8)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file (Python) | orchestrator/app/voice/schemas.py |
+| canonical file (TS) | renderer/src/voice/types.ts |
+| producer | build_narration_script() adapter from Script + StoryboardPackage |
+| consumer | VoiceResolver, TTS pipeline |
+| shape | NarrationScript { version, script_id, project_id, job_id, language, locale, units[NarrationUnit], default_voice_id, version_label, source_lineage, warnings[], failures[] } |
+| sub-models | NarrationUnit (narration_id, scene_id, beat_id, speaker_id, speaker_role, voice_id, text, language, locale, pronunciation_hints[], emphasis_hints[], pacing_intent, expected_duration_sec, version, source_lineage) |
+
+One narration unit per beat. VoiceId is per-unit (override) or resolved via VoiceResolver.
+
+---
+
+## C-19  AudioArtifact (PROMPT 8)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file (Python) | orchestrator/app/voice/schemas.py |
+| canonical file (TS) | renderer/src/voice/types.ts |
+| producer | VoiceTTSProvider.synthesize() + write_audio_artifact() |
+| consumer | AudioCue.tsx (renderer), AudioLibrary, downstream (Editorial/Mastering) |
+| shape | AudioArtifact { artifact_id, narration_id, voice_id, provider, provider_version, source_text_hash, voice_config_hash, format, sample_rate, channels, bits_per_sample, duration_sec, uri, absolute_path, checksum_sha256, byte_size, status, fingerprint, version, created_at, metadata } |
+| enums | AudioArtifactStatus (GENERATED/VALIDATED/REJECTED/NORMALIZED) |
+
+Artifact identity is content-addressed (SHA-256 of normalized text + voice config). Idempotent. No secrets in serialized form.
+
+---
+
+## C-20  SpeechTiming (PROMPT 8)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file (Python) | orchestrator/app/voice/schemas.py |
+| canonical file (TS) | renderer/src/voice/types.ts |
+| producer | VoiceTTSProvider.synthesize() OR build_speech_timing() |
+| consumer | Captions (PROMPT 9), NarrationTimeline |
+| shape | SpeechTiming { timing_id, artifact_id, narration_id, language, timestamp_source, words[WordTiming], segments[SegmentTiming], duration_sec, provider, metadata } |
+| sub-models | WordTiming (word, start_sec, end_sec, confidence), SegmentTiming (text, start_sec, end_sec) |
+| enums | TimestampSource (PROVIDER_NATIVE/UNIFORM_ALIGNMENT/FORCED_ALIGNMENT/UNAVAILABLE) |
+
+Timestamps are NEVER fabricated. If provider doesn't give trustworthy timestamps, TimestampSource=UNAVAILABLE and words=[].
+
+---
+
+## C-21  NarrationTimeline (PROMPT 8)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file (Python) | orchestrator/app/voice/schemas.py |
+| canonical file (TS) | renderer/src/voice/types.ts |
+| producer | build_timeline() in app.voice.timeline |
+| consumer | Captions (PROMPT 9), Editorial (future), Scene timing alignment |
+| shape | NarrationTimeline { timeline_id, script_id, project_id, job_id, fps, total_duration_sec, entries[NarrationTimelineEntry], default_padding_sec, default_pre_roll_sec, default_post_roll_sec, strategy, warnings[], failures[], metadata } |
+| sub-models | NarrationTimelineEntry (narration_id, scene_id, artifact_id, timing_id, voice_id, speaker_id, audio_start_sec, audio_end_sec, scene_start_sec, scene_end_sec, pre_roll_sec, post_roll_sec, padding_sec, resolution_strategy, metadata) |
+
+Maps (NarrationScript, AudioArtifact, SpeechTiming) to scene timing. Duration reconciliation strategy is deterministic (follow_audio by default).
+
+---
+
+## C-22 — CaptionTrack (PROMPT 9)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file (Python) | orchestrator/app/captions/schemas.py |
+| canonical file (TS) | renderer/src/captions/types.ts |
+| producer | CaptionCompiler (orchestrator/app/captions/compiler.py) |
+| consumer | Remotion CaptionRenderer (renderer/src/captions/CaptionRenderer.tsx), QA, captions UI |
+| shape | CaptionTrack { track_id, caption_id, project_id, job_id, narration_timeline_id, scene_id, language, locale, fps, style (CaptionStyle), segments[CaptionSegment], style_id, timestamp_source, alignment_provider_id, quality (TimingQualityScore), scene_start_sec, scene_end_sec, warnings[], failures[], metadata, created_at } |
+| sub-models | CaptionStyle, CaptionSegment, CaptionLine, CaptionWord, TimingQualityScore |
+| enums | CaptionVerticalAnchor (TOP/CENTER/BOTTOM/LOWER_THIRD), CaptionAnimationMode (NONE/FADE/WORD_HIGHLIGHT/SEGMENT_POP), CaptionBreakReason (PUNCTUATION/MAX_CHARS/MAX_WORDS/MAX_DURATION/MIN_DURATION/PHRASE/SPEAKER_CHANGE/NARRATION_END/HARD_SPLIT), TimestampSource (reused from C-20) |
+
+CaptionTrack is the canonical timing authority for visible caption
+display. The renderer NEVER invents timing — it consumes the
+precompiled track. Scene timing comes from NarrationTimeline (C-21);
+animation timing comes from AnimationPlan (C-16). CaptionTrack only
+references those — it does not duplicate them.
+
+### Bridges
+
+- `CaptionCompiler.compile(req)` consumes `(NarrationTimeline, dict[narration_id ? SpeechTiming], dict[narration_id ? narration_text], CaptionStyle)` and produces `CaptionTrack[]` (one per scene).
+- `toLegacyWordTimestamps(track)` adapts CaptionTrack to the legacy `renderer/src/components/Caption.tsx` consumer (PROMPT 9 §25 — adapter boundary, not duplicate timing).
+
+---
+
+## C-23 — CaptionStyle (PROMPT 9)
+
+| field | value |
+|---|---|
+| canonical file (Python) | orchestrator/app/captions/schemas.py |
+| canonical file (TS) | renderer/src/captions/types.ts |
+| shape | CaptionStyle { style_id, name, font_family, font_size_px, font_weight, letter_spacing_px, max_lines, max_chars_per_line, line_spacing_px, alignment, text_color, highlight_color, background_color, shadow, safe_area_pct, vertical_safe_area_pct, vertical_anchor, bottom_margin_pct, animation_mode, highlight_hold_pad_ms, metadata } |
+
+CaptionStyle is data-driven and resolution-independent. The same
+CaptionStyle + CaptionTrack produce valid output for 16:9, 9:16, and
+1:1. Safe-area math adapts at render time (PROMPT 9 §27, §28).
+
+---
+
+## C-24 — AlignmentProvider boundary (PROMPT 9)
+
+| field | value |
+|---|---|
+| canonical file (Python) | orchestrator/app/captions/alignment.py |
+| consumer | CaptionCompiler (future: when forced alignment is enabled) |
+| shape | Protocol: align(request: AlignmentRequest) ? AlignmentResult |
+| concrete impl | UniformAlignmentProvider (timestamp_source=UNIFORM_ALIGNMENT) |
+
+No real forced-alignment engine is implemented in P9 (PROMPT 9 §34).
+The boundary is ready for future Whisper alignment, MFA, wav2vec-based,
+or provider-native alignment engines.
+
+---
+
+## C-25 — `EditorialProject` (PROMPT 10)
+
+| field | value |
+|---|---|
+| version | 1 (no version field; bumps by adding optional fields only) |
+| canonical file (Python) | `orchestrator/app/editorial/schemas.py` |
+| TS mirror | `renderer/src/editorial/types.ts` (hand-written, no automated sync) |
+| producer | `EditorialCompiler.compile(project)` |
+| validator | `orchestrator/app/editorial/validation.py` + Pydantic `model_validator` |
+| consumer | `RenderPlan` (C-26) and downstream Remotion composition |
+| validation mechanism | Pydantic v2 `extra="forbid"` + cross-field validators (unique orders, unique scene_ids, unique track_ids, layer_order duplicates, transition_in duration ? scene duration) |
+| serialization | JSON written to `workspace/{job_id}/editorial_project.json` |
+| status | CANONICAL |
+
+### Top-level fields
+
+- `project_id: str` (required) — opaque project identifier
+- `timeline: EditorialTimeline` (required)
+- `source_bundle: SourceBundle` — references to upstream canonical artifacts
+- `quality_policy: EditorialQualityPolicy` (default) — thresholds for quality score
+- `version: int` (default 1)
+
+### Sub-schemas
+
+- `EditorialTimeline`: scenes (ordered), audio_tracks, layer_order (z-order), title_cards, master_markers, allow_micro_gaps, target_fps, narration_priority_policy (default `AudioMixingPolicy`).
+- `EditorialScene`: scene_id, order, source_scene_duration_sec, transition_in/out, holds, animation_plan_id, caption_track_id, pacing_category, emphasis_level, audio_clips, layer_overrides.
+- `Transition`: kind (CUT/FADE/CROSSFADE/DISSOLVE/DIP_TO_BLACK/DIP_TO_WHITE), duration_sec, easing (LINEAR/EASE_IN/EASE_OUT/EASE_IN_OUT), overlap_behavior.
+- `EditorialHold`: position (BEFORE/AFTER), duration_sec, reason.
+- `AudioClipRef`: clip_id, artifact_id, track_kind, priority, start_offset_sec, gain_db, fade_in_sec, fade_out_sec, mute, duck_under_narration.
+- `AudioTrackLayer`: track_id, track_kind, default_gain_db, allow_ducking, priority, layout (SEPARATE/AMBIENT_BED/MIX_BUS).
+- `AudioMixingPolicy`: priority_order (list[AudioTrackKind]), default_duck_db, narration_priority_window_sec, enable_music_ducking, enable_sfx_ducking.
+- `TitleCardSpec`: card_id, kind (INTRO/CHAPTER/SECTION/OUTRO), master_start_sec, duration_sec, headline, subline, accent_color.
+- `EditorialQualityPolicy`: minimum_score (0–100), reject_on_failure_reasons (list[str]).
+- `EditorialQualityScore`: total (0–100), subscores (timeline_validity, scene_continuity, transition_consistency, audio_continuity, caption_alignment, animation_alignment, asset_integrity, pacing_consistency), pass_fail, failures (list[FailureReason]), warnings (list[FailureReason]).
+
+### Breaking-change policy
+
+Adding new required field is breaking. Add optional fields only. Coordinate with TS mirror.
+
+---
+
+## C-26 — `RenderPlan` (PROMPT 10)
+
+| field | value |
+|---|---|
+| version | 1 (no version field; bumps by adding optional fields only) |
+| canonical file (Python) | `orchestrator/app/editorial/schemas.py::RenderPlan` |
+| TS mirror | `renderer/src/editorial/types.ts::RenderPlan` |
+| producer | `EditorialCompiler.compile(project).render_plan` |
+| validator | `orchestrator/app/editorial/compiler.py` (post-compile invariants) |
+| consumer | `renderer/src/compositions/RenderPlanComposition.tsx` |
+| validation mechanism | Pydantic v2 + manual invariants (scene-local vs master timeline coherence, fps divisibility) |
+| serialization | JSON written to `workspace/{job_id}/render_plan.json` |
+| status | CANONICAL |
+
+### Top-level fields
+
+- `plan_id: str` (required)
+- `project_id: str` (required)
+- `source_fingerprint: str` (min length 8) — deterministic cache key
+- `fps: int` (positive)
+- `width: int`, `height: int` (positive)
+- `total_duration_sec: float` (non-negative)
+- `total_duration_frames: int` (non-negative, must equal `int(round(total_duration_sec * fps))`)
+- `scenes: list[RenderScene]`
+- `audio_tracks: list[RenderAudioTrack]`
+- `audio_clips: list[RenderAudioClip]`
+- `audio_mix: RenderAudioMix`
+- `layers: list[RenderLayer]`
+- `layer_order: list[LayerKind]`
+- `title_cards: list[RenderTitleCard]`
+- `markers: list[RenderMasterMarker]`
+- `transition_summary: dict[str, int]` — counts of each transition kind for QA
+- `quality_score: EditorialQualityScore`
+
+### Sub-schemas
+
+- `RenderScene`: scene_id, master_start_frame, master_end_frame, master_start_sec, master_end_sec, scene_local_offset_sec, source_scene_duration_sec, transition_in, transition_out, holds, z_layers, audio_clip_refs, animation_plan_id, caption_track_id.
+- `RenderLayer`: layer_id, kind (BACKGROUND/ENVIRONMENT/PROPS/CHARACTERS/DIAGRAMS/OVERLAYS/CAPTIONS/TITLE_CARDS), z, scene_id, payload_ref.
+- `RenderAudioClip`: clip_id, artifact_id, track_id, kind, master_start_frame, master_end_frame, master_start_sec, master_end_sec, gain_db, fade_in_sec, fade_out_sec, mute, duck_under_narration, source_scene_id.
+- `RenderAudioMix`: sample_rate, narration_priority_order, default_duck_db, music_ducking_enabled, mastering_metadata (target_lufs, peak_db, true_peak_db, limiter_required).
+- `RenderTransition`: from_scene_id, to_scene_id, kind, duration_sec, overlap_behavior.
+- `RenderMasterMarker`: marker_id, master_frame, master_sec, kind (CHAPTER_BREAK/SILENCE_GAP/EMPHASIS/RESET), note.
+- `RenderTitleCard`: card_id, kind, master_start_frame, master_end_frame, master_start_sec, master_end_sec, headline, subline, accent_color.
+
+### Determinism contract
+
+Given the same `(project, source_bundle)` and the same canonical source artifacts, `EditorialCompiler.compile` MUST produce a byte-identical `RenderPlan` JSON. This is verified by `test_editorial_compiler_determinism` and the cross-runtime test that hashes the fixture.
+
+### Breaking-change policy
+
+Adding new required field is breaking. Add optional fields only. Coordinate with TS mirror.
+
+---
+
+## C-27  RenderProfile (PROMPT 11)
+
+Canonical versioned render settings. Any change to width/height/fps/codec/bitrate/sample-rate/channels/container must bump profile_version, which changes the fingerprint.
+
+| field | type | notes |
+|---|---|---|
+| profile_id | str (=4 chars) | unique per profile |
+| profile_version | int = 1 | bumped on breaking change |
+| width | int ? [320, 7680] | even; horizontal resolution |
+| height | int ? [240, 4320] | even; vertical resolution |
+| ps | float ? (1, 120) | CFR; FFmpeg -r |
+| pixel_format | enum | yuv420p (default), yuv444p,  |
+| ideo_codec | enum | h264 (default), h265, p9, prores |
+| ideo_bitrate_kbps | int > 0 | default 5000 |
+| ideo_crf | int ? [0, 51] | default 23; lower = higher quality |
+| udio_codec | enum | ac (default), mp3, opus, lac, pcm_s16le |
+| udio_sample_rate_hz | int ? [8000, 192000] | default 48000 |
+| udio_channels | int ? [1, 8] | default 2 |
+| udio_bitrate_kbps | int > 0 | default 192 |
+| container | enum | mp4 (default), mov, mkv, webm |
+| ingerprint | str (auto) | deterministic hash of all fields + version |
+
+Defined in orchestrator/app/mastering/schemas.py as RenderProfile.
+
+## C-28  MasteringProfile + FinalVideoArtifact (PROMPT 11)
+
+### MasteringProfile
+
+| field | type | notes |
+|---|---|---|
+| profile_id | str (=4 chars) | unique per mastering profile |
+| profile_version | int = 1 | bumped on breaking change |
+| 	arget_lufs | float ? [-30, -6] | target integrated loudness (default -16 web) |
+| loudness_tolerance | float > 0 | LU window considered PASS (default 2.0) |
+| max_true_peak | float < 0 | dBTP ceiling (default -1.0) |
+| 
+ormalization_enabled | bool | two-pass loudnorm (default True) |
+| limiter_enabled | bool | future; default False |
+| ade_in_ms | int = 0 | leading fade (default 0) |
+| ade_out_ms | int = 0 | trailing fade (default 0) |
+| silence_policy | enum | WARN (default), STRICT, IGNORE |
+| max_leading_silence_ms | int = 0 | default 250 |
+| max_trailing_silence_ms | int = 0 | default 250 |
+| ingerprint | str (auto) | deterministic hash |
+
+### FinalVideoArtifact
+
+| field | type | notes |
+|---|---|---|
+| rtifact_id | str (=4 chars) | unique per final artifact |
+| project_id | str | owning project |
+| 
+ender_plan_id | str | upstream render plan |
+| 
+aw_artifact_id | str | the immediate raw render artifact |
+| 
+ender_profile_id / mastering_profile_id | str | upstream profiles |
+| 
+enderer_version | str | FFmpeg + Remotion versions |
+| width / height / ps | int/int/float | mirror of profile (verified) |
+| ideo_codec / udio_codec | enum | actual codec after encoding |
+| udio_sample_rate_hz / udio_channels | int | measured |
+| duration_sec | float | measured by ffprobe |
+| ile_size_bytes | int = 0 | actual on-disk size |
+| checksum_sha256 | str (hex 64) | reproducible for identical bytes |
+| loudness_lufs / 	rue_peak_dbtp / loudness_range_lu | float? | nullable if UNAVAILABLE |
+| qa_report_id | str | ? MediaQAReport (C-29) |
+| lifecycle_status | enum | RENDERED, VALIDATING, APPROVED, REJECTED, SUPERSEDED, ARCHIVED |
+| qa_status | enum | RENDER_SUCCESS, QA_PENDING, QA_PASS, QA_WARN, QA_FAIL, FINAL_APPROVED |
+| inal_path | str | absolute path to the MP4 |
+| ingerprint | str (auto) | composite of plan + profiles + renderer + raw |
+| created_at | datetime | UTC |
+
+Defined in orchestrator/app/mastering/schemas.py.
+
+## C-29  MediaQAReport + Check Types (PROMPT 11)
+
+11 discriminated QA check types. Every check returns PASS | WARN | FAIL | UNAVAILABLE and carries check_id, expected, measured, tolerance, status, explanation.
+
+| check_id | type | measures |
+|---|---|---|
+| VIDEO_STREAM | VideoStreamCheck | =1 video stream, =1 audio stream where required |
+| AUDIO_STREAM | AudioStreamCheck | audio stream presence + sample-rate / channel match |
+| DURATION | DurationCheck | final vs RenderPlan within 0.1 s |
+| FPS | FPSCheck | actual vs profile within 0.1 fps |
+| RESOLUTION | ResolutionCheck | width/height vs profile exact |
+| CODEC | CodecCheck | video codec matches RenderProfile; audio codec matches MasteringProfile |
+| AUDIO_DURATION | AudioDurationCheck | audio duration vs final within 0.1 s |
+| LOUDNESS | LoudnessCheck | measured LUFS vs target within loudness_tolerance |
+| TRUE_PEAK | TruePeakCheck | measured dBTP = max_true_peak |
+| DECODE | DecodeCheck | FFmpeg decode validation passes |
+| SYNC | SyncCheck | audio/video drift = 5 ms |
+| ARTIFACT_INTEGRITY | ArtifactIntegrityCheck | checksum reproducibility |
+
+overall_status follows the QAPolicy (critical-fail = REJECT; warn-only = APPROVED with warnings).
+
+Defined in orchestrator/app/mastering/qa.py and schemas.py.
+
+---
+
+## C-30 — `RenderJob` (PROMPT 12)
+
+| field | value |
+|---|---|
+| version | 1.0.0 |
+| canonical file | `orchestrator/app/orchestration/render_job.py` |
+| producer | `RenderOrchestrator.orchestrate()` |
+| consumer | `/render/*` API, `RenderOrchestrator.load_job()`, `webapp/lib/api.ts::RenderStatus` |
+| validation | Pydantic v2 + `model_validator` (safe-id on job_id, project_id, render_plan_id, artifact_id) |
+| serialization | JSON written to `workspace/{job_id}/render_job.json` |
+| status | CANONICAL |
+
+### Top-level fields
+
+- `job_id: str` (required, regex `^[A-Za-z0-9_-]+$`, length 1–64)
+- `project_id: str` (required, length 1–128)
+- `topic: str` (required, length 1–300)
+- `lifecycle: JobLifecycle` (see lifecycle enum below)
+- `progress_pct: int` (0–100)
+- `current_stage: str | None` — name of currently running stage
+- `stage_progress: dict[str, int]` — stage-name ? progress percentage
+- `stages: list[RenderJobStageInfo]` — per-stage detail
+- `is_terminal: bool` — derived from lifecycle
+- `error: str | None` — failure description
+- `error_stage: str | None` — which stage failed (preparing/preflight/rendering/mastering/qa/finalizing)
+- `render_plan_id: str | None`
+- `render_plan_fingerprint: str | None`
+- `raw_artifact_id: str | None`
+- `final_artifact_id: str | None`
+- `qa_report_id: str | None`
+- `renderer_version: str | None` — e.g. `remotion-0.1.0`
+- `ffmpeg_version: str | None` — e.g. `ffmpeg-9.0`
+- `request_fingerprint: RenderRequestFingerprint | None` — composite hash of upstream inputs
+- `workspace_dir: str` — internal-only; never exposed to webapp
+- `final_mp4_path: str | None` — internal-only; explicitly nulled in API responses
+- `created_at`, `started_at`, `finished_at`, `updated_at: datetime`
+
+### `JobLifecycle` enum
+
+`QUEUED`, `PREPARING`, `PREFLIGHT`, `RENDERING`, `MASTERING`, `QA`,
+`FINALIZING`, `APPROVED`, `FAILED`, `CANCELLED`.
+
+### Lifecycle state machine
+
+```
+QUEUED     ? PREPARING
+PREPARING  ? PREFLIGHT | FAILED
+PREFLIGHT  ? RENDERING | FAILED
+RENDERING  ? MASTERING | FAILED
+MASTERING  ? QA | FAILED
+QA         ? FINALIZING | FAILED
+FINALIZING ? APPROVED | FAILED
+APPROVED   ? (terminal)
+FAILED     ? (terminal)
+CANCELLED  ? (terminal)
+```
+
+Terminal states: `APPROVED`, `FAILED`, `CANCELLED`. Invalid transitions raise `InvalidTransitionError`.
+
+### `RenderJobStageInfo` sub-schema
+
+- `name: str` — preparing | preflight | rendering | mastering | qa | finalizing
+- `label: str` — human-readable label
+- `status: StageStatus` — pending | running | completed | failed | skipped
+- `started_at: datetime | None`
+- `finished_at: datetime | None`
+- `error: str | None`
+
+### `RenderRequestFingerprint` sub-schema
+
+- `render_plan_fingerprint: str` (min length 4)
+- `render_profile_fingerprint: str` (min length 4)
+- `mastering_profile_fingerprint: str` (min length 4)
+- `renderer_version: str` (min length 4)
+- `ffmpeg_version: str` (min length 4)
+- `composite: str` (auto-computed SHA-256 hash, prefixed `rj_`)
+- `upstream_fingerprints: list[str]`
+
+### Progress semantics
+
+Stage-weighted progress (not raw frame progress):
+
+| Stage | Weight |
+|---|---|
+| queued | 0% |
+| preparing | 5% |
+| preflight | 10% |
+| rendering | 55% |
+| mastering | 75% |
+| qa | 90% |
+| finalizing | 98% |
+| approved | 100% |
+| failed | 100% |
+| cancelled | 100% |
+
+### Strict-model invariant
+
+`RENDERING SUCCESS != FINAL SUCCESS`. A job is only `APPROVED` when both:
+- `FinalVideoArtifact.lifecycle == APPROVED`, AND
+- `FinalVideoArtifact.qa_status == FINAL_APPROVED`.
+
+If the QA gate rejects the candidate at the finalizing stage, the orchestrator transitions the job to `FAILED` at `error_stage="finalizing"` — the artifact remains available on disk for debugging but is NEVER served through the public `/render/{id}/video` endpoint (P12 §34).
+
+### Breaking-change policy
+
+Adding new required fields is breaking. Add optional fields only. The `JobLifecycle` enum is the only place lifecycle strings are defined — every UI/API consumer must derive from this canonical source.

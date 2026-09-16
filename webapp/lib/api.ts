@@ -333,7 +333,173 @@ export interface RegistryInfo {
   updated_at: string;
 }
 
-// ---- Asset API methods ----
+// ---- Render Orchestration types (PROMPT 12) ----
+
+export type RenderLifecycle =
+  | "queued"
+  | "preparing"
+  | "preflight"
+  | "rendering"
+  | "mastering"
+  | "qa"
+  | "finalizing"
+  | "approved"
+  | "failed"
+  | "cancelled";
+
+export interface RenderJobStageInfo {
+  name: string;
+  label: string;
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  started_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+}
+
+export interface RenderStatus {
+  job_id: string;
+  project_id: string;
+  topic: string;
+  lifecycle: RenderLifecycle;
+  progress_pct: number;
+  current_stage: string | null;
+  stage_progress: Record<string, number>;
+  stages: RenderJobStageInfo[];
+  is_terminal: boolean;
+  error: string | null;
+  error_stage: string | null;
+  render_plan_id: string | null;
+  final_artifact_id: string | null;
+  qa_report_id: string | null;
+  renderer_version: string | null;
+  ffmpeg_version: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface QACheckResult {
+  check_id: string;
+  status: "pass" | "warn" | "fail" | "unavailable";
+  expected: unknown;
+  measured: unknown;
+  tolerance: number | null;
+  explanation: string;
+}
+
+export interface RenderQAReport {
+  report_id: string;
+  artifact_id: string;
+  overall_status: string;
+  checks: QACheckResult[];
+  warnings: string[];
+  failures: string[];
+  ffmpeg_version: string;
+  ffprobe_version: string;
+  profile_id: string;
+  fingerprint: string;
+  created_at: string;
+}
+
+export interface RenderArtifact {
+  artifact_id: string;
+  project_id: string;
+  render_plan_id: string | null;
+  raw_artifact_id: string | null;
+  render_profile_id: string | null;
+  mastering_profile_id: string | null;
+  qa_report_id: string | null;
+  renderer_version: string | null;
+  width: number;
+  height: number;
+  fps: number;
+  video_codec: string;
+  audio_codec: string;
+  audio_sample_rate_hz: number;
+  audio_channels: number;
+  duration_sec: number;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  loudness_lufs: number | null;
+  true_peak_dbtp: number | null;
+  loudness_range_lu: number | null;
+  lifecycle_status: string;
+  qa_status: string;
+  video_url: string;
+  fingerprint: string;
+  created_at: string;
+}
+
+// ---- Render API methods ----
+
+export const renderApi = {
+  /** POST /render/preflight */
+  preflight: (body: {
+    job_id: string;
+    project_id: string;
+    topic: string;
+    editorial_project_data?: Record<string, unknown>;
+    render_profile_data?: Record<string, unknown>;
+    mastering_profile_data?: Record<string, unknown>;
+  }) =>
+    http<{
+      job_id: string;
+      status: string;
+      errors: Array<{ severity: string; field: string; message: string }>;
+      warnings: Array<{ severity: string; field: string; message: string }>;
+      render_plan_id: string | null;
+      render_plan_fingerprint: string | null;
+      resolved_asset_count: number;
+      resolved_audio_count: number;
+      estimated_duration_sec: number | null;
+      created_at: string;
+    }>("/api/render/preflight", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+    }),
+
+  /** POST /render/finalize — returns 202 immediately; poll /status */
+  finalize: (body: {
+    job_id: string;
+    project_id: string;
+    topic: string;
+    editorial_project_data?: Record<string, unknown>;
+    render_profile_data?: Record<string, unknown>;
+    mastering_profile_data?: Record<string, unknown>;
+  }) =>
+    http<{
+      job_id: string;
+      lifecycle: string;
+      progress_pct: number;
+      current_stage: string | null;
+      render_plan_id: string | null;
+      render_job_id: string | null;
+      message: string;
+    }>("/api/render/finalize", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+    }),
+
+  /** GET /render/{job_id}/status */
+  status: (jobId: string) =>
+    http<RenderStatus>(`/api/render/${encodeURIComponent(jobId)}/status`),
+
+  /** GET /render/{job_id}/qa */
+  qa: (jobId: string) => http<RenderQAReport>(
+    `/api/render/${encodeURIComponent(jobId)}/qa`
+  ),
+
+  /** GET /render/{job_id}/artifact */
+  artifact: (jobId: string) => http<RenderArtifact>(
+    `/api/render/${encodeURIComponent(jobId)}/artifact`
+  ),
+
+  /** GET /render/{job_id}/video — stream URL (use directly as <video src>) */
+  videoUrl: (jobId: string) => `/api/render/${encodeURIComponent(jobId)}/video`,
+};
+
 
 export const assetApi = {
   listAssets: (projectId: string = "", assetType?: string, limit = 100) =>

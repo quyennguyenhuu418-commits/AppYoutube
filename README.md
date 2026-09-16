@@ -345,3 +345,34 @@ A：本项目代码是 MIT 协议，但生成的视频中包含的图片 / 音�
 如果你在使用过程中遇到任何问题（安装失败、运行报错、效果不理想），把错误信息和你的操作步骤告诉我，我会持续迭代。
 
 祝玩得开心。
+
+---
+
+## 9. 当前状态（PROMPT 7 — 2026-09-15）
+
+**动画引擎已完成。** PROMPT 7 构建了完整的确定性动画运行时：
+
+- 485 Python tests passed / 0 failed / 0 errors（+79 新测试）
+- 71 Vitest tests passed（renderer/）
+- 真实的 Remotion 动画渲染产出 7.9 KB MP4（640×360 h264，6.0s）
+  - 角色进入 → 行走 → 停止 → 持枪互动
+  - 摄像机平移 + 缩放（ease_in_out）
+- TypeScript 全量编译通过
+- 项目审计 PASS
+- 动画子系统：AnimationPlan 合同、AnimationCompiler、动作映射、插值、角色/道具/摄像机动画、骨架锚点交互
+- 已解决技术债务：L-019、L-021、C-004、C-005、C-036、C-010 partial
+
+**NOT 开始 PROMPT 8（TTS/语音）。** PROMPT 7 要求首先证明动画运行时是确定性的、资产驱动的、帧可寻址的、渲染机兼容的，并能产出实际动画 MP4。该质量门已通过。
+
+详细报告：`plans/prompt_7_FINAL_REPORT.md`（待创建）
+测试状态：`docs/TEST_STATUS.md`
+
+## 10. 停止条件
+
+- 不要自动开始 PROMPT 8
+- 不要添加 TTS
+- 不要添加字幕
+- 不要添加编辑功能
+- 首先证明动画运行时是确定性的、资产驱动的、帧可寻址的、渲染机兼容的，并能产出实际动画 MP4
+
+完整系统说明：`docs/PROJECT_CONTEXT.md`

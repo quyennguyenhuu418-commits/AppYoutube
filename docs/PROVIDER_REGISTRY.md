@@ -168,3 +168,59 @@ Readiness values:
 If a provider's readiness needs to be upgraded (UNVERIFIED → REAL or
 PARTIAL → REAL), runtime evidence must be added to `docs/TEST_STATUS.md`
 before the change.
+
+
+---
+
+## Voice / TTS Providers (PROMPT 8)
+
+The Voice / TTS / Audio Intelligence Layer introduces a canonical
+TTSProviderName enum and a VoiceTTSProvider interface
+(orchestrator/app/voice/provider_base.py). Provider selection is
+managed by pp.voice.provider_factory.select_provider().
+
+| name | enum value | implementation | readiness | notes |
+|---|---|---|---|---|
+| Mock | MOCK | orchestrator/app/voice/mock_tts.py | **VERIFIED** | Deterministic stdlib wave WAV, content-addressed, used by all voice tests + smoke |
+| ElevenLabs | ELEVENLABS | legacy pp/providers/elevenlabs_tts.py wrapped by LegacyProviderAdapter | **UNVERIFIED** | Requires ELEVENLABS_API_KEY; not exercised in CI |
+| gTTS | GTTS | legacy pp/providers/gtts_tts.py wrapped by LegacyProviderAdapter | **UNVERIFIED** | Requires network; not exercised in CI |
+| Local GPU TTS | LOCAL | stub | STUBBED | Placeholder for Vi-F5-TTS / F5-TTS / CosyVoice |
+| F5-TTS | F5_TTS | stub | STUBBED | Future |
+| Vi-F5-TTS | VI_F5_TTS | stub | STUBBED | Future (Vietnamese-first) |
+| CosyVoice | COSYVOICE | stub | STUBBED | Future |
+
+### VoiceTTSProvider interface (PROMPT 8)
+
+`
+synthesize(request: VoiceTTSRequest) -> VoiceTTSResponse
+validate_voice(voice: VoiceDefinition) -> bool
+get_voice_metadata(voice: VoiceDefinition) -> dict
+estimate_duration(voice: VoiceDefinition, text: str) -> float  (optional)
+supports_language(voice: VoiceDefinition, language: str) -> bool
+`
+
+### VoiceTTSRequest (canonical)
+
+{ text, voice (VoiceDefinition), settings_override (VoiceSettings|null), output_path, language, locale, pronunciation_hints[], metadata, fingerprint }
+
+### VoiceTTSResponse (canonical)
+
+{ audio_path, duration_sec, sample_rate, channels, bits_per_sample, format, provider_artifact_meta, word_timestamps[] }
+
+### Provider Capability Matrix
+
+Capabilities are advertised by each provider implementation. PROMPT 8
+intentionally does NOT hardcode per-provider assumptions in the
+orchestrator � providers must declare their own capabilities.
+
+Capabilities include:
+- supported_languages
+- speaker_identities
+- voice_cloning_available
+- pronunciation_support
+- ssml_support
+- streaming_support
+- output_formats
+- timestamp_support (PROVIDER_NATIVE / UNAVAILABLE)
+- maximum_text_length
+

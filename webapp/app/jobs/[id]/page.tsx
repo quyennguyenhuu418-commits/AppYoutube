@@ -64,7 +64,7 @@ export default function JobDetailPage() {
       </section>
 
       <section>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Link
             href={`/jobs/${id}/storyboard`}
             className="inline-block px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm font-medium"
@@ -82,6 +82,12 @@ export default function JobDetailPage() {
             className="inline-block px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm font-medium"
           >
             View Assets →
+          </Link>
+          <Link
+            href={`/jobs/${id}/render`}
+            className="inline-block px-4 py-2 bg-accent text-slate-900 hover:opacity-90 rounded text-sm font-medium"
+          >
+            🎬 Final Render Inspector →
           </Link>
         </div>
       </section>

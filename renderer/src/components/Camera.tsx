@@ -8,10 +8,10 @@
 import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig, Easing } from "remotion";
 
-import type { Camera, EasingName } from "../scenes/types";
+import type { Camera as CameraType, EasingName } from "../scenes/types";
 
 interface Props {
-  camera: Camera;
+  camera: CameraType;
   durationInFrames: number;
   children: React.ReactNode;
 }

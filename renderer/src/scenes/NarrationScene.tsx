@@ -1,5 +1,4 @@
 import React from "react";
-import React from "react";
 import { interpolate, useCurrentFrame, useVideoConfig, Easing } from "remotion";
 
 import { Camera } from "../components/Camera";

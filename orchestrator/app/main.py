@@ -15,6 +15,7 @@ from app.api import assets, characters, jobs
 from app.api.research import router as research_router
 from app.api.story import router as story_router
 from app.api.storyboard import router as storyboard_router
+from app.api.render import router as render_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 
@@ -53,6 +54,7 @@ app.include_router(research_router)
 app.include_router(story_router)
 app.include_router(storyboard_router)
 app.include_router(characters.router)
+app.include_router(render_router)
 
 
 @app.get("/health")

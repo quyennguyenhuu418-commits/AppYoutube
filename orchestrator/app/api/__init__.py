@@ -14,6 +14,7 @@ from app.api.jobs import router as jobs_router
 from app.api.research import router as research_router
 from app.api.story import router as story_router
 from app.api.storyboard import router as storyboard_router
+from app.api.render import router as render_router
 
 router = APIRouter()
 router.include_router(assets_router)
@@ -22,5 +23,6 @@ router.include_router(jobs_router)
 router.include_router(research_router)
 router.include_router(story_router)
 router.include_router(storyboard_router)
+router.include_router(render_router)
 
 __all__ = ["router"]

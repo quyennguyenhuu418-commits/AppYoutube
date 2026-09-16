@@ -97,9 +97,15 @@ Status values: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `PLANNED`.
 | Storyboard integration (asset_requirements → resolution) | `assets/engine.py` | — | `test_asset_system.py` | **IMPLEMENTED** | **VERIFIED** |
 | s6 backward-compatible bridge | `assets/s6_bridge.py` | — | `test_asset_system.py` | **IMPLEMENTED** | **VERIFIED** |
 | s8 integration (LLM pre-prompt asset injection) | `s8_scene_json.py` | — | indirect | **IMPLEMENTED** | **VERIFIED** (no LLM schema changes) |
-| Asset API (13 endpoints) | `api/assets.py` | — | NONE | **IMPLEMENTED** | none |
+| Asset API (13 endpoints) | `api/assets.py` | — | **test_pipeline_integration_65.py** (4 HTTP tests) | **IMPLEMENTED** | **VERIFIED (Prompt 6.5)** |
+| Asset HTTP routing verification | FastAPI TestClient | — | test_pipeline_integration_65.py | **IMPLEMENTED** | **VERIFIED (Prompt 6.5)** |
 | Asset inspection UI | — | `/jobs/[id]/assets/page.tsx` | NONE | **IMPLEMENTED** | none |
-| **Animation Engine** | — | — | — | MISSING | PROMPT 7 (P6 must pass quality gate) |
+| AssetReference → SceneDefinition bridge | `schemas/asset.py` | — | test_pipeline_integration_65.py | **IMPLEMENTED** | **VERIFIED (Prompt 6.5)** |
+| Canonical Asset ID integrity check (s9) | `s9_validate.py` | — | test_pipeline_integration_65.py | **IMPLEMENTED** | **VERIFIED (Prompt 6.5)** |
+| End-to-end vertical pipeline fixture | integration test | — | test_pipeline_integration_65.py | **IMPLEMENTED** | **VERIFIED (Prompt 6.5)** |
+| Render smoke test (real MP4) | `scripts/render_smoke_test.py` | `renderer/src/render_cli.tsx`, `smoke_entry.tsx` | manual driver | **IMPLEMENTED** | **VERIFIED (Prompt 6.5, 51.8 KB MP4)** |
+| Renderer Asset adapter | `renderer/src/lib/assetAdapter.ts` | — | manual smoke test only | **IMPLEMENTED** | PARTIAL (Provider bridging in P7) |
+| **Animation Engine** | — | — | — | MISSING | PROMPT 7 (P6.5 verified integration first) |
 | **Vertical reframe (9:16)** | heuristic | — | — | **PARTIAL** | COMPARISON beats flagged; full reframe in renderer |
 
 ## Assets / Audio
@@ -125,8 +131,10 @@ Status values: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `PLANNED`.
 | Documentary composition | `Documentary.tsx` | — | NONE | IMPLEMENTED | UNVERIFIED |
 | Camera pan/zoom | `Camera.tsx` | — | NONE | IMPLEMENTED | UNVERIFIED |
 | Word-by-word captions | `Caption.tsx` | — | NONE | IMPLEMENTED | UNVERIFIED |
-| Animated character | `Character.tsx` | — | NONE | IMPLEMENTED | UNVERIFIED |
+| Animated character | `Character.tsx` | — | NONE | IMPLEMENTED | UNVERIFIED; stick-figure (L-019) |
 | SVG props | `Props.tsx` | — | NONE | IMPLEMENTED | UNVERIFIED |
+| **Smoke entry composition** | `smoke_entry.tsx` (NEW, P6.5) | — | `scripts/render_smoke_test.py` | **IMPLEMENTED** | **VERIFIED (Prompt 6.5, real MP4)** |
+| **Render CLI subprocess** | `render_cli.tsx` (NEW, P6.5) | — | `scripts/render_smoke_test.py` | **IMPLEMENTED** | **VERIFIED (Prompt 6.5)** |
 | **Audio playback (sfx/music)** | — | — | — | MISSING | C-004 |
 | **Character.name/.description rendering** | — | — | — | MISSING | C-005 |
 | **Environment.mood-based lighting** | — | — | — | MISSING | C-005 |
@@ -170,3 +178,64 @@ Status values: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `PLANNED`.
 If a feature's status moves from MISSING to IMPLEMENTED, update this
 matrix AND `docs/PROJECT_STATE.md` AND `docs/CHANGELOG_INTERNAL.md` in the
 same change.
+
+
+## PROMPT 7 — Animation Engine & Motion Runtime
+
+| Feature | Status | Verification |
+|---|---|---|
+| AnimationPlan canonical contract | VERIFIED | test_animation_contract.py (16 tests) |
+| AnimationCompiler (validate/normalize/resolve) | VERIFIED | test_animation_compiler.py (15 tests) |
+| Action Mapper (narrative to canonical clip) | VERIFIED | test_animation_character_prop.py (18 tests) |
+| Interpolation (linear/ease_in/ease_out/ease_in_out/hold) | VERIFIED | test_animation_interpolation.py (22) + TS (18) |
+| Deterministic frame state computation | VERIFIED | test_animation_determinism.py (6) + TS runtime.test.ts (16) |
+| Golden frame tests (frames 0/15/30/60/90) | VERIFIED | golden.test.ts (25 tests) |
+| AnimatedCharacter (pose, position, scale, rotation, opacity) | VERIFIED | runtime.test.ts |
+| AnimatedProp (position, scale, rotation, opacity, interaction) | VERIFIED | runtime.test.ts |
+| AnimatedCamera (pan, zoom, easing) | VERIFIED | runtime.test.ts |
+| Character Prop interaction (PropAnchor attach/detach) | VERIFIED | runtime.test.ts |
+| Walk cycle (deterministic phase, bob, stride) | VERIFIED | runtime.test.ts |
+| Conflict resolution (priority + track_id) | VERIFIED | runtime.test.ts |
+| Documentary.tsx fs-free adapter path (L-021) | VERIFIED | TypeScript compile + render artifact |
+| Audio cue wiring (sfx[]/music, gain_db) | VERIFIED | AudioCue.tsx |
+| AssetReference.renderer_hints consumed (C-036) | VERIFIED | assetAdapter.test.ts |
+| Renderer Vitest setup | VERIFIED | 71 tests passing |
+| Animation smoke test (real MP4) | VERIFIED | scripts/animation_smoke_test.py (7.9 KB, 6s, exit 0) |
+| E2E Storyboard to AnimationPlan to MP4 | VERIFIED | test_animation_e2e.py (2 passed + 1 slow) |
+
+---
+
+## PROMPT 8 — Voice / TTS / Audio Intelligence Layer
+
+| Feature | Status | Verification |
+|---|---|---|
+| **VoiceDefinition canonical schema** | **VERIFIED** | test_voice_schemas.py (12) |
+| **VoiceLifecycle (DRAFT→VALIDATED→APPROVED→ACTIVE→DEPRECATED→ARCHIVED)** | **VERIFIED** | test_voice_lifecycle.py |
+| **VoiceRegistry (register/lookup/search/find_by_*)** | **VERIFIED** | test_voice_registry.py |
+| **VoiceResolver (explicit → project default → compatible language → mock fallback)** | **VERIFIED** | test_voice_resolver.py |
+| **VoiceResolver audit log (ResolutionEvent)** | **VERIFIED** | test_voice_resolver.py + pipeline |
+| **TTSProvider abstraction (VoiceTTSProvider)** | **VERIFIED** | test_voice_provider_base.py |
+| **MockTTSProvider (deterministic stdlib `wave`)** | **VERIFIED** | test_voice_mock_tts.py |
+| **Provider factory (select_provider + LegacyProviderAdapter)** | **VERIFIED** | test_voice_provider_factory.py |
+| **Content-addressed VoiceTTSCache** | **VERIFIED** | test_voice_cache.py |
+| **Canonical AudioArtifact** | **VERIFIED** | test_voice_audio_artifact.py |
+| **AudioValidator (file, format, duration, decodeability)** | **VERIFIED** | test_voice_audio_validator.py |
+| **NarrationScript adapter (Script + StoryboardPackage)** | **VERIFIED** | test_voice_narration.py |
+| **SpeechTiming (word-level timestamps + TimestampSource)** | **VERIFIED** | test_voice_timing.py |
+| **NarrationTimeline (script + artifact + timing → scene timing)** | **VERIFIED** | test_voice_timeline.py |
+| **Duration reconciliation policies** | **VERIFIED** | test_voice_timeline.py |
+| **PronunciationHint / EmphasisHint (canonical, provider-agnostic)** | **VERIFIED** | test_voice_pronunciation.py |
+| **TTS pipeline (run_tts_pipeline: idempotent + audit)** | **VERIFIED** | test_voice_pipeline.py |
+| **Voice failure paths (unknown voice, unsupported lang, empty text, corrupt audio)** | **VERIFIED** | test_voice_failures.py |
+| **Secrets not in artifacts (§42)** | **VERIFIED** | test_voice_e2e.py |
+| **Cross-runtime contract (TS mirrors Python)** | **VERIFIED** | crossRuntime.test.ts (6) |
+| **CanonicalAudioLibrary (artifact_id → validated URI)** | **VERIFIED** | audioLib.test.ts (12) |
+| **AudioCue plays canonical narration audio** | **VERIFIED** | AudioCue.tsx + smoke |
+| **Renderer TS types mirror Python schemas** | **VERIFIED** | types.ts + crossRuntime.test.ts |
+| **Scene-narration timing helpers** | **VERIFIED** | timeline.test.ts (13) |
+| **Real narration MP4 with audio (ffprobe verified)** | **VERIFIED** | scripts/voice_audio_smoke_test.py (166 KB, h264 + aac, 4.05s) |
+| **E2E Story → NarrationScript → TTS → Audio → Scene → MP4** | **VERIFIED** | test_voice_e2e.py (8) + smoke script |
+| ElevenLabs TTS (via LegacyProviderAdapter) | IMPLEMENTED | UNVERIFIED (no API key in CI) |
+| gTTS (via LegacyProviderAdapter) | IMPLEMENTED | UNVERIFIED (no network in CI) |
+| Forced alignment provider | STUBBED | TimestampSource.UNAVAILABLE when no provider-native |
+| Loudness normalization | DEFERRED | Extension point in AudioArtifact metadata |
