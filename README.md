@@ -6,31 +6,31 @@ Hệ thống sản xuất video documentary bằng AI - **nhập chủ đề, xu
 
 > Hệ thống bắt chước phong cách của các kênh documentary 2D / stick-figure giáo dục hiện đại (câu hỏi thúc đẩy tò mò, commentary bằng giọng nói, nhân vật đơn giản, camera động, infographic animation), nhưng hoàn toàn tự sáng tạo về hình ảnh và văn bản.
 
-> Người dùng nhập chủ đề (ví dụ: `How Did Ancient Humans Survive Deadly Winters?`), hệ thống sẽ tự động: nghiên cứu → luận điểm → tiêu đề → kịch bản → storyboard → tài nguyên nhân vật/background → audio narration → scene JSON → render video → cắt Short 9:16.
+> Người dùng nhập chủ đề (ví dụ: `How Did Ancient Humans Survive Deadly Winters?`), hệ thống sẽ tự động: nghiên cứu → luận điểm → tiêu đề → kịch bản → storyboard → tài nguyên nhân vật/background → audio narration → scene JSON → render video → cắt Short 9:16 → sinh thumbnail → chuẩn bị xuất bản đa nền tảng.
 
-> **Nguyên tắc thiết kế cốt lõi**: LLM **không bao giờ viết code video trực tiếp**. LLM chỉ xuất JSON `SceneDefinition` nghiêm ngặt, animation và hình học thực sự do renderer确定性 (Remotion) thực thi.
-
----
-
-## 🚀 Tính năng đã hoàn thành
-
-- ✅ **Backend FastAPI** với **13 stages pipeline** (s1→s13: research → publishing)
-- ✅ **Groq LLM Provider** (MIỄN PHÍ, NHANH) - dùng `groq/compound-mini`
-- ✅ **Cursor SDK Provider** - dùng Modal Agent để research/script
-- ✅ **OpenAI/ElevenLabs** providers (optional)
-- ✅ **Mock LLM Provider** - chạy demo không cần API key
-- ✅ **FFmpeg** - render video thực
-- ✅ **Remotion renderer** - video composition
-- ✅ **Next.js webapp** - giao diện quản lý
-- ✅ **P13 Shorts Generator** - 9:16 vertical clips (TikTok/Reels)
-- ✅ **P14 Thumbnail Generator** - YouTube/Twitter/Instagram thumbnails
-- ✅ **P15 Multi-platform Publishing** - metadata cho YouTube + TikTok + Facebook
-- ✅ **P16 Real Platform API Clients** - credential-based YouTube/TikTok/Facebook clients
-- ✅ **Research Engine v16.5** - contradiction detection, geographic + quantitative extraction
+**Nguyên tắc thiết kế cốt lõi**: LLM **không bao giờ viết code video trực tiếp**. LLM chỉ xuất JSON `SceneDefinition` nghiêm ngặt, animation và hình học thực sự do renderer tất định (Remotion) thực thi.
 
 ---
 
-## 🔧 Cài đặt nhanh (Windows)
+## Tính năng đã hoàn thành
+
+- **Backend FastAPI** với **13 stages pipeline** (s1→s13: từ nghiên cứu → xuất bản)
+- **Groq LLM Provider** (MIỄN PHÍ, NHANH) - dùng `groq/compound-mini`
+- **Cursor SDK Provider** - dùng Modal Agent để research/script
+- **OpenAI/ElevenLabs** providers (tùy chọn)
+- **Mock LLM Provider** - chạy demo không cần API key
+- **FFmpeg** - render video thực
+- **Remotion renderer** - video composition
+- **Next.js webapp** - giao diện quản lý
+- **P13 Shorts Generator** - cắt clip dọc 9:16 (TikTok/Reels)
+- **P14 Thumbnail Generator** - ảnh thumbnail YouTube/Twitter/Instagram
+- **P15 Multi-platform Publishing** - metadata cho YouTube + TikTok + Facebook
+- **P16 Real Platform API Clients** - credential-based YouTube/TikTok/Facebook clients
+- **Research Engine v16.5** - phát hiện mâu thuẫn, trích xuất địa điểm + số liệu
+
+---
+
+## Cài đặt nhanh (Windows)
 
 ### Yêu cầu hệ thống
 - Python 3.11+ (đã cài)
@@ -62,13 +62,13 @@ start.bat
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Health Check
 ```
 GET http://localhost:8000/health
 ```
-Returns:
+Response mẫu:
 ```json
 {
   "status": "ok",
@@ -93,20 +93,20 @@ Content-Type: application/json
 }
 ```
 
-### Check job status
+### Check trạng thái job
 ```
 GET http://localhost:8000/jobs/{job_id}
 ```
 
-### Distribution (after job completes)
+### Distribution (sau khi job hoàn thành)
 ```
-# Generate 9:16 Shorts
+# Sinh Shorts 9:16
 GET http://localhost:8000/jobs/{job_id}/shorts
 
-# Generate thumbnails
+# Sinh thumbnails
 GET http://localhost:8000/jobs/{job_id}/thumbnails
 
-# Plan publishing to YouTube/TikTok/Facebook
+# Lên kế hoạch xuất bản YouTube/TikTok/Facebook
 POST http://localhost:8000/publishing/preflight
 POST http://localhost:8000/publishing/finalize
 GET http://localhost:8000/publishing/{job_id}/plan
@@ -114,12 +114,12 @@ GET http://localhost:8000/publishing/{job_id}/plan
 
 ---
 
-## 🔑 Lấy Cursor API Key
+## Lấy Cursor API Key
 
-⚠️ **Lưu ý quan trọng**: Cursor API key **chỉ tạo được trên web dashboard**, không tạo được trong IDE.
+Lưu ý quan trọng: Cursor API key **chỉ tạo được trên web dashboard**, không tạo được trong IDE.
 
 ### Cách lấy:
-1. Mở browser: https://cursor.com/dashboard/integrations
+1. Mở trình duyệt: https://cursor.com/dashboard/integrations
 2. Đăng nhập bằng tài khoản Cursor của bạn
 3. Click **"New API Key"**
 4. Copy key (dạng `cursor_xxxxxxxxxx`)
@@ -131,18 +131,18 @@ GET http://localhost:8000/publishing/{job_id}/plan
 ### Nếu không có API key
 Vẫn dùng được Cursor Modal qua **Cursor IDE chat** (Ctrl+I / Cmd+I). Nhưng không tự động hóa được từ pipeline.
 
-## 🤖 LLM Providers (ưu tiên theo thứ tự)
+## LLM Providers (ưu tiên theo thứ tự)
 
-| Provider | Cost | Speed | Quality | Setup |
-|----------|------|-------|---------|-------|
-| **Cursor SDK** | Dùng request của bạn | ⚡⚡ | ⭐⭐⭐⭐⭐ | Cần `CURSOR_API_KEY` |
-| **Groq** | FREE | ⚡⚡⚡ | ⭐⭐⭐ | ✅ Đã cấu hình |
-| **OpenAI** | $$$ | ⚡⚡ | ⭐⭐⭐⭐⭐ | Cần `OPENAI_API_KEY` |
-| **Mock** | FREE | ⚡⚡⚡ | Demo | Mặc định |
+| Provider | Chi phí | Tốc độ | Chất lượng | Cài đặt |
+|----------|---------|--------|-----------|---------|
+| **Cursor SDK** | Dùng request của bạn | Rất nhanh | ⭐⭐⭐⭐⭐ | Cần `CURSOR_API_KEY` |
+| **Groq** | MIỄN PHÍ | Cực nhanh | ⭐⭐⭐⭐ | Đã cấu hình |
+| **OpenAI** | $$$ | Nhanh | ⭐⭐⭐⭐⭐ | Cần `OPENAI_API_KEY` |
+| **Mock** | MIỄN PHÍ | Cực nhanh | Demo | Mặc định |
 
 ---
 
-## 🧪 Test thủ công
+## Test thủ công
 
 ### Test Groq Provider
 ```powershell
@@ -164,34 +164,42 @@ cd scripts
 
 ---
 
-## 📁 Cấu trúc dự án
+## Cấu trúc dự án
 
 ```
 AppYoutube/
 ├── orchestrator/              # Python FastAPI backend
 │   ├── app/
 │   │   ├── providers/        # LLM, TTS, Image, Search providers
-│   │   │   ├── groq_llm.py   # ← Groq provider (FREE!)
+│   │   │   ├── groq_llm.py   # ← Groq provider (MIỄN PHÍ!)
 │   │   │   ├── cursor_agent.py  # ← Cursor SDK provider
 │   │   │   ├── openai_llm.py
 │   │   │   └── mock_llm.py
-│   │   ├── pipeline/         # 11-stage video generation pipeline
-│   │   │   └── stages/       # s1_research → s11_short
+│   │   ├── pipeline/         # 13-stage video generation pipeline
+│   │   │   └── stages/       # s1_research → s13_publishing
+│   │   ├── shorts/           # P13: 9:16 short clips
+│   │   ├── thumbnail/        # P14: YouTube/Twitter thumbnails
+│   │   ├── publishing/       # P15+P16: multi-platform publishing
 │   │   ├── api/              # FastAPI routes
 │   │   └── main.py
 │   ├── .venv/                # Python virtual environment
 │   ├── requirements.txt
-│   └── test_groq_provider.py
+│   └── tests/                # 1673+ Python tests
 ├── renderer/                  # Node.js Remotion video renderer
 ├── webapp/                    # Next.js frontend
+│   └── app/jobs/[id]/
+│       ├── shorts/page.tsx       # P13
+│       ├── thumbnails/page.tsx   # P14
+│       └── publishing/page.tsx   # P15+P16
 ├── workspace/                 # Job outputs (gitignored)
+├── docs/                      # Tài liệu dự án
 ├── .env                       # API keys
-└── start.bat                  # One-click launcher
+└── start.bat                  # Launcher một lệnh
 ```
 
 ---
 
-## 🔑 Environment Variables
+## Biến môi trường
 
 Xem file `.env` để biết tất cả biến môi trường. Các biến quan trọng:
 
@@ -209,7 +217,7 @@ DEFAULT_WIDTH=1920
 DEFAULT_HEIGHT=1080
 TARGET_DURATION_SEC=120
 
-# Publishing credentials (P16) — optional, để trống nếu chưa muốn publish
+# Publishing credentials (P16) — tùy chọn, để trống nếu chưa muốn publish
 YOUTUBE_API_KEY=...           # YouTube Data API v3 key
 YOUTUBE_CLIENT_ID=...         # OAuth 2.0
 YOUTUBE_CLIENT_SECRET=...     # OAuth 2.0
@@ -219,12 +227,12 @@ TIKTOK_CLIENT_SECRET=...      # TikTok for Developers
 TIKTOK_ACCESS_TOKEN=...       # TikTok Login Kit
 FACEBOOK_ACCESS_TOKEN=...     # Facebook Graph API
 FACEBOOK_PAGE_ID=...          # Facebook Page ID
-FACEBOOK_INSTAGRAM_ID=...     # Optional, for cross-post
+FACEBOOK_INSTAGRAM_ID=...     # Tùy chọn, để cross-post
 ```
 
 ---
 
-## 💡 Tại sao Groq lại là lựa chọn tốt nhất?
+## Tại sao Groq lại là lựa chọn tốt nhất?
 
 1. **MIỄN PHÍ** với giới hạn rất cao (~30 req/phút)
 2. **CỰC NHANH** (~500 tokens/sec)
@@ -235,7 +243,35 @@ Groq được ưu tiên **trước** OpenAI trong pipeline. Khi cần task phứ
 
 ---
 
-## 🐛 Troubleshooting
+## Tổng quan Pipeline (13 stages)
+
+```
+s1_research         →  Thu thập nguồn + trích xuất claims
+s2_thesis           →  Xác định luận điểm cốt lõi
+s3_titles           →  Sinh 5-10 tiêu đề viral
+s4_script           →  Viết kịch bản ~120s
+s5_storyboard       →  Chia scene với emotion + visual cue
+s6_assets           →  Nhân vật + background assets
+s7_narration        →  Audio giọng nói (TTS)
+s8_scene_json       →  JSON scene canonical cho renderer
+s9_validate         →  QA: validate schema, integrity, captions
+s10_render          →  Final video (Remotion + FFmpeg)
+s11_short           →  P13: Cắt 9:16 short clips
+s12_thumbnail       →  P14: Sinh thumbnails
+s13_publishing      →  P15+P16: Chuẩn bị metadata cho đa nền tảng
+```
+
+### Tính năng Distribution
+
+Sau khi job hoàn thành, từ trang chi tiết job có thể truy cập:
+
+- **Shorts** (`/jobs/[id]/shorts`) — 5-8 clip dọc 9:16 với captions repositioned
+- **Thumbnails** (`/jobs/[id]/thumbnails`) — Title cards + scene captures (4 variants: title, scene, social, square)
+- **Publishing** (`/jobs/[id]/publishing`) — Form chọn nền tảng + metadata + preflight check
+
+---
+
+## Troubleshooting
 
 ### Lỗi "python not recognized"
 - Cài lại Python và tick "Add Python to PATH"
@@ -252,11 +288,50 @@ Groq được ưu tiên **trước** OpenAI trong pipeline. Khi cần task phứ
 ### Model not found (Groq)
 - Groq đã ngừng hỗ trợ `llama-3.1-*`, dùng `groq/compound-mini` hoặc `qwen/qwen3.8-27b`
 
+### Publishing trả về RATE_LIMITED
+- Đây là stub — để enable real uploads cần:
+  1. Install `httpx` hoặc `aiohttp`
+  2. Cấu hình OAuth credentials trong `.env`
+  3. Implement actual HTTP calls trong `app/publishing/platform_client.py`
+
 ---
 
-## 📞 Support
+## Hỗ trợ
 
-- Docs: Xem `docs/` folder
-- Issues: Tạo issue trên GitHub
-- Cursor API: https://cursor.com/dashboard/integrations
-- Groq Console: https://console.groq.com
+- **Docs**: Xem `docs/` folder
+- **Issues**: Tạo issue trên GitHub
+- **Cursor API**: https://cursor.com/dashboard/integrations
+- **Groq Console**: https://console.groq.com
+
+---
+
+## Roadmap tổng quan
+
+```
+P0  → P12      HOÀN THÀNH (Foundation + Render + Pipeline)
+P13 Shorts     ✅ HOÀN THÀNH
+P14 Thumbnails ✅ HOÀN THÀNH
+P15 Publishing ✅ HOÀN THÀNH
+P16 Real APIs  ✅ HOÀN THÀNH (Client layer, cần HTTP cho live upload)
+P16.5 Research ✅ HOÀN THÀNH
+
+Future work:
+  - Analytics dashboard
+  - Multi-user + Auth
+  - Real OAuth HTTP uploads (YouTube/TikTok/Facebook)
+  - Animation Engine cho renderer
+```
+
+---
+
+## Tóm tắt kỹ thuật
+
+| Thành phần | Trạng thái | Tests |
+|------------|-----------|-------|
+| Pipeline (s1-s13) | ✅ 13 stages | 180+ pass |
+| Shorts | ✅ 9:16 generator | 23 tests |
+| Thumbnails | ✅ Multi-variant | 15 tests |
+| Publishing metadata | ✅ 3 platforms | 29 tests |
+| Platform API clients | ✅ Stub interface | 16 tests |
+| Research engine | ✅ 5 extractors | 8 tests |
+| Web UI | ✅ 3 distribution pages | — |

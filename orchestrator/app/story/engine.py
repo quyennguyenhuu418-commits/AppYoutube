@@ -1646,6 +1646,10 @@ Return JSON:
         info_count = 0
 
         for f in findings_raw:
+            # Skip non-dict entries (e.g. stray strings from LLM)
+            if not isinstance(f, dict):
+                log.warning("Skipping non-dict finding: %s", f)
+                continue
             try:
                 severity = CritiqueSeverity(f.get("severity", "info"))
             except ValueError:

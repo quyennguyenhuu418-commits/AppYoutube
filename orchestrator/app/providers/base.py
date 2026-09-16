@@ -130,3 +130,42 @@ class ContentFetchProvider(ABC):
     @abstractmethod
     def fetch(self, url: str) -> FetchResult | None: ...
 
+
+# ----- Video generation -----
+# Tích hợp các AI video provider miễn phí: Kivest, Veo 3.1, Kling, ...
+# Khi project mở rộng để sinh B-roll footage, animation B-roll sẽ dùng các provider này.
+
+@dataclass
+class VideoRequest:
+    """Request tạo video từ text prompt hoặc image-to-video."""
+    prompt: str
+    output_path: str                       # Path lưu file MP4
+    duration_sec: int = 8                  # Độ dài video (giây)
+    aspect_ratio: str = "16:9"             # "16:9" | "9:16" | "1:1"
+    quality: str = "standard"              # "draft" | "standard" | "high"
+    reference_image_path: str | None = None  # For image-to-video
+    seed: int | None = None                # Để tái tạo kết quả
+
+
+@dataclass
+class VideoResponse:
+    """Kết quả generate video."""
+    video_path: str
+    duration_sec: float
+    provider: str                          # Tên provider đã dùng
+    model: str                             # Model cụ thể
+    cost_estimate_usd: float = 0.0         # Ước tính chi phí (cho monitoring)
+
+
+class VideoProvider(ABC):
+    """Abstract base cho mọi AI video generation provider."""
+    name: str = "base"
+
+    @abstractmethod
+    def generate(self, request: VideoRequest) -> VideoResponse: ...
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Kiểm tra provider có sẵn sàng (đủ API key, không bị rate-limit, v.v.)."""
+        ...
+
